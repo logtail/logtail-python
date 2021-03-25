@@ -31,7 +31,7 @@ setup(
     author_email='hello@logtail.com',
     classifiers=[
           'Intended Audience :: Developers',
-          'License :: OSI Approved :: ISC License',
+          'License :: OSI Approved :: ISC License (ISCL)',
           'Operating System :: OS Independent',
           'Programming Language :: Python :: 2',
           'Programming Language :: Python :: 2.7',

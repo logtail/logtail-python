@@ -70,5 +70,5 @@ def _relative_to_main_module_if_possible(pathname):
     has_main_module = hasattr(__main__, '__file__')
     return _relative_to_main_module(pathname) if has_main_module else pathname
 
-def _relative_to_main_module(pathname)
+def _relative_to_main_module(pathname):
     return path.relpath(pathname, path.dirname(__main__.__file__))

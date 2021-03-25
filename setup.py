@@ -3,7 +3,7 @@ import os
 from setuptools import setup
 
 
-VERSION = '0.1.1'
+VERSION = '0.1.0'
 ROOT_DIR = os.path.dirname(__file__)
 
 REQUIREMENTS = [
@@ -17,7 +17,7 @@ with open("README.md", "r") as fh:
 setup(
     name='logtail-python',
     version=VERSION,
-    packages=['logtail-python'],
+    packages=['logtail'],
     include_package_data=True,
     license='ISC',
     description='Logtail.com client library',

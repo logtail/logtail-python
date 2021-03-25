@@ -1,0 +1,11 @@
+__pycache__
+*.pyc
+*.log
+.python-version
+htmlcov
+.coverage
+.tox
+*.egg-info
+build/*
+dist/*
+.DS_Store

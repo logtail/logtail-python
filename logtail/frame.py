@@ -1,8 +1,9 @@
 # coding: utf-8
 from __future__ import print_function, unicode_literals
-import msgpack
 from datetime import datetime
 
+from os import path
+import __main__
 
 def create_frame(record, message, context, include_all_extra=False):
     r = record.__dict__
@@ -16,7 +17,7 @@ def create_frame(record, message, context, include_all_extra=False):
     # Runtime context
     ctx['runtime'] = runtime = {}
     runtime['function'] = r['funcName']
-    runtime['file'] = r['filename']
+    runtime['file'] = _relative_to_main_module_if_possible(r['pathname'])
     runtime['line'] = r['lineno']
     runtime['thread_id'] = r['thread']
     runtime['thread_name'] = r['threadName']
@@ -40,7 +41,7 @@ def create_frame(record, message, context, include_all_extra=False):
 
 def _parse_custom_events(record, include_all_extra):
     default_keys = {
-        'args', 'asctime', 'created', 'exc_info', 'exc_text', 'filename',
+        'args', 'asctime', 'created', 'exc_info', 'exc_text', 'pathname',
         'funcName', 'levelname', 'levelno', 'lineno', 'module', 'msecs',
         'message', 'msg', 'name', 'pathname', 'process', 'processName',
         'relativeCreated', 'thread', 'threadName'
@@ -63,3 +64,11 @@ def _levelname(level):
         'error': 'error',
         'critical': 'critical',
     }[level.lower()]
+
+
+def _relative_to_main_module_if_possible(pathname):
+    has_main_module = hasattr(__main__, '__file__')
+    return _relative_to_main_module(pathname) if has_main_module else pathname
+
+def _relative_to_main_module(pathname)
+    return path.relpath(pathname, path.dirname(__main__.__file__))

@@ -1,4 +1,4 @@
-name: Python package
+name: Logtail python client
 
 on:
   - push

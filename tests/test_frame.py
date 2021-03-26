@@ -8,13 +8,13 @@ import logging
 
 class TestLogtailLogEntry(unittest2.TestCase):
     def test_create_frame_happy_path(self):
-        handler = LogtailHandler(access_token="some-access-token")
+        handler = LogtailHandler(source_token="some-source-token")
         log_record = logging.LogRecord("logtail-test", 20, "/some/path", 10, "Some log message", [], None)
         frame = create_frame(log_record, log_record.getMessage(), LogtailContext())
         self.assertTrue(frame['level'] == 'info')
 
     def test_create_frame_with_extra(self):
-        handler = LogtailHandler(access_token="some-access-token")
+        handler = LogtailHandler(source_token="some-source-token")
 
         log_record = logging.LogRecord("logtail-test", 20, "/some/path", 10, "Some log message", [], None)
         extra = {'non_dict_key': 'string_value', 'dict_key': {'name': 'Test Test'}}

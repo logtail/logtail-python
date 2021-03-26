@@ -18,7 +18,7 @@ DEFAULT_DROP_EXTRA_EVENTS = True
 
 class LogtailHandler(logging.Handler):
     def __init__(self,
-                 access_token,
+                 source_token,
                  host=DEFAULT_HOST,
                  buffer_capacity=DEFAULT_BUFFER_CAPACITY,
                  flush_interval=DEFAULT_FLUSH_INTERVAL,
@@ -27,11 +27,11 @@ class LogtailHandler(logging.Handler):
                  context=DEFAULT_CONTEXT,
                  level=logging.NOTSET):
         super(LogtailHandler, self).__init__(level=level)
-        self.access_token = access_token
+        self.source_token = source_token
         self.host = host
         self.context = context
         self.pipe = multiprocessing.JoinableQueue(maxsize=buffer_capacity)
-        self.uploader = Uploader(self.access_token, self.host)
+        self.uploader = Uploader(self.source_token, self.host)
         self.drop_extra_events = drop_extra_events
         self.buffer_capacity = buffer_capacity
         self.flush_interval = flush_interval

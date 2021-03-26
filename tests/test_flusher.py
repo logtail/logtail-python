@@ -13,13 +13,13 @@ from logtail.uploader import Uploader
 
 class TestFlushWorker(unittest2.TestCase):
     host = 'https://in.logtail.com'
-    access_token = 'dummy_access_token'
+    source_token = 'dummy_source_token'
     buffer_capacity = 5
     flush_interval = 2
 
     def _setup_worker(self, uploader=None):
         pipe = queue.Queue(maxsize=self.buffer_capacity)
-        uploader = uploader or Uploader(self.access_token, self.host)
+        uploader = uploader or Uploader(self.source_token, self.host)
         fw = FlushWorker(uploader, pipe, self.buffer_capacity, self.flush_interval)
         return pipe, uploader, fw
 

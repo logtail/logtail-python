@@ -5,11 +5,11 @@ import requests
 
 
 class Uploader(object):
-    def __init__(self, access_token, host):
-        self.access_token = access_token
+    def __init__(self, source_token, host):
+        self.source_token = source_token
         self.host = host
         self.headers = {
-            'Authorization': 'Bearer %s' % access_token,
+            'Authorization': 'Bearer %s' % source_token,
             'Content-Type': 'application/msgpack',
         }
 

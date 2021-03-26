@@ -10,13 +10,13 @@ from logtail.handler import LogtailHandler
 
 
 class TestLogtailHandler(unittest2.TestCase):
-    access_token = 'dummy_access_token'
+    source_token = 'dummy_source_token'
     host = 'dummy_host'
 
     @mock.patch('logtail.handler.FlushWorker')
     def test_handler_creates_uploader_from_args(self, MockWorker):
-        handler = LogtailHandler(access_token=self.access_token, host=self.host)
-        self.assertEqual(handler.uploader.access_token, self.access_token)
+        handler = LogtailHandler(source_token=self.source_token, host=self.host)
+        self.assertEqual(handler.uploader.source_token, self.source_token)
         self.assertEqual(handler.uploader.host, self.host)
 
     @mock.patch('logtail.handler.FlushWorker')
@@ -24,7 +24,7 @@ class TestLogtailHandler(unittest2.TestCase):
         buffer_capacity = 9
         flush_interval = 1
         handler = LogtailHandler(
-            access_token=self.access_token,
+            source_token=self.source_token,
             buffer_capacity=buffer_capacity,
             flush_interval=flush_interval
         )
@@ -34,7 +34,7 @@ class TestLogtailHandler(unittest2.TestCase):
     def test_handler_creates_and_starts_worker_from_args(self, MockWorker):
         buffer_capacity = 9
         flush_interval = 9
-        handler = LogtailHandler(access_token=self.access_token, buffer_capacity=buffer_capacity, flush_interval=flush_interval)
+        handler = LogtailHandler(source_token=self.source_token, buffer_capacity=buffer_capacity, flush_interval=flush_interval)
         MockWorker.assert_called_with(
             handler.uploader,
             handler.pipe,
@@ -45,7 +45,7 @@ class TestLogtailHandler(unittest2.TestCase):
 
     @mock.patch('logtail.handler.FlushWorker')
     def test_emit_starts_thread_if_not_alive(self, MockWorker):
-        handler = LogtailHandler(access_token=self.access_token)
+        handler = LogtailHandler(source_token=self.source_token)
         self.assertTrue(handler.flush_thread.start.call_count, 1)
         handler.flush_thread.is_alive = mock.Mock(return_value=False)
 
@@ -60,7 +60,7 @@ class TestLogtailHandler(unittest2.TestCase):
     def test_emit_drops_records_if_configured(self, MockWorker):
         buffer_capacity = 1
         handler = LogtailHandler(
-            access_token=self.access_token,
+            source_token=self.source_token,
             buffer_capacity=buffer_capacity,
             drop_extra_events=True
         )
@@ -80,7 +80,7 @@ class TestLogtailHandler(unittest2.TestCase):
     def test_emit_does_not_drop_records_if_configured(self, MockWorker):
         buffer_capacity = 1
         handler = LogtailHandler(
-            access_token=self.access_token,
+            source_token=self.source_token,
             buffer_capacity=buffer_capacity,
             drop_extra_events=False
         )
@@ -111,7 +111,7 @@ class TestLogtailHandler(unittest2.TestCase):
     def test_error_suppression(self, MockWorker):
         buffer_capacity = 1
         handler = LogtailHandler(
-            access_token=self.access_token,
+            source_token=self.source_token,
             buffer_capacity=buffer_capacity,
             raise_exceptions=True
         )

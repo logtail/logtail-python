@@ -9,7 +9,7 @@ from logtail.uploader import Uploader
 
 class TestUploader(unittest2.TestCase):
     host = 'https://in.logtail.com'
-    access_token = 'dummy_access_token'
+    source_token = 'dummy_source_token'
     frame = [1, 2, 3]
 
     @mock.patch('logtail.uploader.requests.post')
@@ -25,7 +25,7 @@ class TestUploader(unittest2.TestCase):
             self.assertEqual(msgpack.unpackb(data, raw=False), self.frame)
 
         post.side_effect = mock_post
-        u = Uploader(self.access_token, self.host)
+        u = Uploader(self.source_token, self.host)
         u(self.frame)
 
         self.assertTrue(post.called)

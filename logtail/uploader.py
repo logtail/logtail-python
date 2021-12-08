@@ -8,6 +8,7 @@ class Uploader(object):
     def __init__(self, source_token, host):
         self.source_token = source_token
         self.host = host
+        self.session = requests.Session()
         self.headers = {
             'Authorization': 'Bearer %s' % source_token,
             'Content-Type': 'application/msgpack',
@@ -15,4 +16,4 @@ class Uploader(object):
 
     def __call__(self, frame):
         data = msgpack.packb(frame, use_bin_type=True)
-        return requests.post(self.host, data=data, headers=self.headers)
+        return self.session.post(self.host, data=data, headers=self.headers)

@@ -12,7 +12,7 @@ class TestUploader(unittest2.TestCase):
     source_token = 'dummy_source_token'
     frame = [1, 2, 3]
 
-    @mock.patch('logtail.uploader.requests.post')
+    @mock.patch('logtail.uploader.requests.Session.post')
     def test_call(self, post):
         def mock_post(endpoint, data=None, headers=None):
             # Check that the data is sent to ther correct endpoint

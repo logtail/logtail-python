@@ -5,7 +5,7 @@ from datetime import datetime
 from os import path
 import __main__
 
-def create_frame(record, message, context, include_all_extra=False):
+def create_frame(record, message, context, include_extra_attributes=False):
     r = record.__dict__
     frame = {}
     frame['dt'] = datetime.utcfromtimestamp(r['created']).isoformat()
@@ -32,14 +32,14 @@ def create_frame(record, message, context, include_all_extra=False):
     if context.exists():
         ctx.update(context.collapse())
 
-    events = _parse_custom_events(record, include_all_extra)
+    events = _parse_custom_events(record, include_extra_attributes)
     if events:
         frame.update(events)
 
     return frame
 
 
-def _parse_custom_events(record, include_all_extra):
+def _parse_custom_events(record, include_extra_attributes):
     default_keys = {
         'args', 'asctime', 'created', 'exc_info', 'exc_text', 'pathname',
         'funcName', 'levelname', 'levelno', 'lineno', 'module', 'msecs',
@@ -50,7 +50,7 @@ def _parse_custom_events(record, include_all_extra):
     for key, val in record.__dict__.items():
         if key in default_keys:
             continue
-        if not include_all_extra and not isinstance(val, dict):
+        if not include_extra_attributes and not isinstance(val, dict):
             continue
         events[key] = val
     return events

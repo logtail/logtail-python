@@ -26,5 +26,5 @@ class TestLogtailLogEntry(unittest2.TestCase):
         self.assertIn('dict_key', frame)
         self.assertNotIn('non_dict_key', frame)
 
-        frame = create_frame(log_record, log_record.getMessage(), LogtailContext(), include_all_extra=True)
+        frame = create_frame(log_record, log_record.getMessage(), LogtailContext(), include_extra_attributes=True)
         self.assertIn('non_dict_key', frame)

@@ -14,6 +14,7 @@ DEFAULT_BUFFER_CAPACITY = 1000
 DEFAULT_FLUSH_INTERVAL = 1
 DEFAULT_RAISE_EXCEPTIONS = False
 DEFAULT_DROP_EXTRA_EVENTS = True
+DEFAULT_INCLUDE_EXTRA_ATTRIBUTES = True
 
 
 class LogtailHandler(logging.Handler):
@@ -24,6 +25,7 @@ class LogtailHandler(logging.Handler):
                  flush_interval=DEFAULT_FLUSH_INTERVAL,
                  raise_exceptions=DEFAULT_RAISE_EXCEPTIONS,
                  drop_extra_events=DEFAULT_DROP_EXTRA_EVENTS,
+                 include_extra_attributes=DEFAULT_INCLUDE_EXTRA_ATTRIBUTES,
                  context=DEFAULT_CONTEXT,
                  level=logging.NOTSET):
         super(LogtailHandler, self).__init__(level=level)
@@ -33,6 +35,7 @@ class LogtailHandler(logging.Handler):
         self.pipe = multiprocessing.JoinableQueue(maxsize=buffer_capacity)
         self.uploader = Uploader(self.source_token, self.host)
         self.drop_extra_events = drop_extra_events
+        self.include_extra_attributes = include_extra_attributes
         self.buffer_capacity = buffer_capacity
         self.flush_interval = flush_interval
         self.raise_exceptions = raise_exceptions
@@ -54,7 +57,7 @@ class LogtailHandler(logging.Handler):
             if self._is_main_process() and not self.flush_thread.is_alive():
                 self.flush_thread.start()
             message = self.format(record)
-            frame = create_frame(record, message, self.context)
+            frame = create_frame(record, message, self.context, include_extra_attributes=self.include_extra_attributes)
             try:
                 self.pipe.put(frame, block=(not self.drop_extra_events))
             except queue.Full:

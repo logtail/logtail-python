@@ -5,6 +5,6 @@ from .handler import LogtailHandler
 from .helpers import LogtailContext, DEFAULT_CONTEXT
 from .formatter import LogtailFormatter
 
-__version__ = '0.1.2'
+__version__ = '0.1.3'
 
 context = DEFAULT_CONTEXT

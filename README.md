@@ -36,7 +36,7 @@ pip install logtail-python
 
 To help you get started with using Logtail in your Python projects, we have prepared a simple Python program that showcases the usage of Logtail logger.
 
-## Download the example project
+## Download and install the example project
 
 You can download the [example project](https://github.com/logtail/logtail-python/tree/master/example-project) from GitHub directly or you can clone it to a select directory. Then install the `logtail-python` client library as shown before:
 

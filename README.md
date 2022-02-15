@@ -38,7 +38,7 @@ To help you get started with using Logtail in your Python projects, we have prep
 
 ## Download the example project
 
-You can download the example project from GitHub directly or you can clone it to a select directory. Then install the `logtail-python` client library as shown before:
+You can download the [example project](https://github.com/logtail/logtail-python/tree/master/example-project) from GitHub directly or you can clone it to a select directory. Then install the `logtail-python` client library as shown before:
 
 ```bash
 pip install logtail-python
@@ -66,7 +66,7 @@ This example project will create a total of 6 logs. Each corresponding to its re
 
 ## Explore how example project works
  
-Learn how to setup Python logging by exploring the working of the example project in detail. 
+Learn how to setup Python logging by exploring the workings of the [example project](https://github.com/logtail/logtail-python/tree/master/example-project) in detail. 
  
 ---
  

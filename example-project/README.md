@@ -17,7 +17,7 @@ pip install logtail-python
 To run the example application, simply run the following command:
 
 ```bash
-python main.py <source-token>
+python example-project.py <source-token>
 ```
 
 Don't forget to replace `<source-token>` with your actual source toke which you can find in the source settings.
@@ -39,7 +39,7 @@ In this section, we will take a look at actual logging as shown in the example p
 
 ## Setup
 
-First, we need to import the Logtail client library to our code. This can be done using the import keyword. We also need to import the default logging library as well.
+First, we need to import the Logtail client library to our code. This can be done using the import keyword. We also need to import the default logging library.
 
 ```python
 # Import Logtail client library and default logging library
@@ -112,7 +112,7 @@ The code above will generate the following JSON logs:
    "dt":"2022-02-03 12:08:55.642 UTC",
    "context":{
       "runtime":{
-         "file_string":"main.py",
+         "file_string":"example-project.py",
          "function_string":"<module>",
          "line_integer":"39",
          "logger_name_string":"__main__",
@@ -124,7 +124,7 @@ The code above will generate the following JSON logs:
          "process_name_string":"MainProcess"
       }
    },
-   "filename_string":"main.py",
+   "filename_string":"example-project.py",
    "level_string":"error",
    "message_string":"Oops! An error occured!",
    "severity_integer":"4"
@@ -134,7 +134,7 @@ The code above will generate the following JSON logs:
    "dt":"2022-02-03 12:08:55.643 UTC",
    "context":{
       "runtime":{
-         "file_string":"main.py",
+         "file_string":"example-project.py",
          "function_string":"<module>",
          "line_integer":"50",
          "logger_name_string":"__main__",
@@ -146,9 +146,9 @@ The code above will generate the following JSON logs:
          "process_name_string":"MainProcess"
       }
    },
-   "filename_string":"main.py",
+   "filename_string":"example-project.py",
    "level_string":"error",
-   "message_string":"Error occurred while calling non-existing function\nTraceback (most recent call last):\n  File \"main.py\", line 48, in <module>\n    nonexisting_function() # Calling nonexisting function\nNameError: name 'nonexisting_function' is not defined",
+   "message_string":"Error occurred while calling non-existing function\nTraceback (most recent call last):\n  File \"example-project.py\", line 48, in <module>\n    nonexisting_function() # Calling nonexisting function\nNameError: name 'nonexisting_function' is not defined",
    "severity_integer":"4"
 }
 ```
@@ -177,7 +177,7 @@ This will generate the following JSON log:
    "dt":"2022-02-03 12:08:55.642 UTC",
    "context":{
       "runtime":{
-         "file_string":"main.py",
+         "file_string":"example-project.py",
          "function_string":"<module>",
          "line_integer":"31",
          "logger_name_string":"__main__",
@@ -189,7 +189,7 @@ This will generate the following JSON log:
          "process_name_string":"MainProcess"
       }
    },
-   "filename_string":"main.py",
+   "filename_string":"example-project.py",
    "item":{
       "price_float":100,
       "url_string":"https://fictional-store.com/item-123"

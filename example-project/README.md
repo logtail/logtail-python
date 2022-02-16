@@ -31,7 +31,7 @@ Output:
 All done! You can check your logs now.
 ```
 
-This will create a total of 6 logs. Each corresponds to its respective method.
+This will create a total of 6 logs. Each corresponds to its respective method. Detail explanation follows below.
 
 # Logging
 

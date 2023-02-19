@@ -1,6 +1,6 @@
 # coding: utf-8
 from __future__ import print_function, unicode_literals
-from datetime import datetime
+from datetime import datetime, timezone
 
 from os import path
 import __main__
@@ -8,7 +8,7 @@ import __main__
 def create_frame(record, message, context, include_extra_attributes=False):
     r = record.__dict__
     frame = {}
-    frame['dt'] = datetime.utcfromtimestamp(r['created']).isoformat()
+    frame['dt'] = datetime.utcfromtimestamp(r['created']).replace(tzinfo=timezone.utc).isoformat()
     frame['level'] = level = _levelname(r['levelname'])
     frame['severity'] = int(r['levelno'] / 10)
     frame['message'] = message

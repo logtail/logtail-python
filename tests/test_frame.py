@@ -12,6 +12,8 @@ class TestLogtailLogEntry(unittest2.TestCase):
         log_record = logging.LogRecord("logtail-test", 20, "/some/path", 10, "Some log message", [], None)
         frame = create_frame(log_record, log_record.getMessage(), LogtailContext())
         self.assertTrue(frame['level'] == 'info')
+        # ISO timestamp must end with timezone info
+        self.assertTrue(frame['dt'].endswith("+00:00"))
 
     def test_create_frame_with_extra(self):
         handler = LogtailHandler(source_token="some-source-token")

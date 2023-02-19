@@ -15,6 +15,11 @@ class TestLogtailLogEntry(unittest2.TestCase):
         # ISO timestamp must end with timezone info
         self.assertTrue(frame['dt'].endswith("+00:00"))
 
+        # Sent date matches log record date
+        date_ref = datetime.utcfromtimestamp(log_record.created)
+        date_sent = datetime.fromisoformat(frame['dt'])
+        self.assertEqual(date_ref, date_sent)
+
     def test_create_frame_with_extra(self):
         handler = LogtailHandler(source_token="some-source-token")
 

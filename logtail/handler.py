@@ -27,7 +27,8 @@ class LogtailHandler(logging.Handler):
                  drop_extra_events=DEFAULT_DROP_EXTRA_EVENTS,
                  include_extra_attributes=DEFAULT_INCLUDE_EXTRA_ATTRIBUTES,
                  context=DEFAULT_CONTEXT,
-                 level=logging.NOTSET):
+                 level=logging.NOTSET,
+                 single_flusher=True):
         super(LogtailHandler, self).__init__(level=level)
         self.source_token = source_token
         self.host = host
@@ -46,6 +47,7 @@ class LogtailHandler(logging.Handler):
             self.buffer_capacity,
             self.flush_interval
         )
+        self.single_flusher = single_flusher
         if self._is_main_process():
             self.flush_thread.start()
 
@@ -54,8 +56,9 @@ class LogtailHandler(logging.Handler):
 
     def emit(self, record):
         try:
-            if self._is_main_process() and not self.flush_thread.is_alive():
-                self.flush_thread.start()
+            if not self.flush_thread.is_alive():
+                if not self.single_flusher or self._is_main_process():
+                    self.flush_thread.start()
             message = self.format(record)
             frame = create_frame(record, message, self.context, include_extra_attributes=self.include_extra_attributes)
             try:

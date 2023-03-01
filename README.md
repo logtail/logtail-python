@@ -67,6 +67,17 @@ This example project will create a total of 6 logs. Each corresponding to its re
 ## Explore how example project works
  
 Learn how to setup Python logging by exploring the workings of the [example project](https://github.com/logtail/logtail-python/tree/master/example-project) in detail. 
+
+## Using a web framework
+
+If using a webframework like guvicorn or uvicorn, you may want to use the `single_flusher`. Turning this flag off enables child processes to have their own log flushers.
+
+```python
+LogtailHandler(
+  source_token=sys.argv[1],
+  single_flusher=False
+)
+```
  
 ---
  

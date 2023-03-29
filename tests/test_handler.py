@@ -31,22 +31,29 @@ class TestLogtailHandler(unittest2.TestCase):
         self.assertTrue(handler.pipe.empty())
 
     @mock.patch('logtail.handler.FlushWorker')
-    def test_handler_creates_worker_from_args(self, MockWorker):
+    def test_handler_creates_and_starts_worker_from_args_after_first_log(self, MockWorker):
         buffer_capacity = 9
         flush_interval = 9
         handler = LogtailHandler(source_token=self.source_token, buffer_capacity=buffer_capacity, flush_interval=flush_interval)
+
+        self.assertFalse(MockWorker.called)
+
+        logger = logging.getLogger(__name__)
+        logger.handlers = []
+        logger.addHandler(handler)
+        logger.critical('hello')
+
         MockWorker.assert_called_with(
             handler.uploader,
             handler.pipe,
             buffer_capacity,
             flush_interval
         )
+        self.assertEqual(handler.flush_thread.start.call_count, 1)
 
     @mock.patch('logtail.handler.FlushWorker')
     def test_emit_starts_thread_if_not_alive(self, MockWorker):
         handler = LogtailHandler(source_token=self.source_token)
-        self.assertEqual(handler.flush_thread.start.call_count, 0)
-        handler.flush_thread.is_alive = mock.Mock(return_value=False)
 
         logger = logging.getLogger(__name__)
         logger.handlers = []
@@ -54,6 +61,11 @@ class TestLogtailHandler(unittest2.TestCase):
         logger.critical('hello')
 
         self.assertEqual(handler.flush_thread.start.call_count, 1)
+        handler.flush_thread.is_alive = mock.Mock(return_value=False)
+
+        logger.critical('hello')
+
+        self.assertEqual(handler.flush_thread.start.call_count, 2)
 
     @mock.patch('logtail.handler.FlushWorker')
     def test_emit_drops_records_if_configured(self, MockWorker):

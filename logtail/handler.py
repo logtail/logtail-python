@@ -40,19 +40,24 @@ class LogtailHandler(logging.Handler):
         self.flush_interval = flush_interval
         self.raise_exceptions = raise_exceptions
         self.dropcount = 0
+        # Do not initialize the flush thread yet because it causes issues on Render.
+        self.flush_thread = None
+
+    def ensure_flush_thread_alive(self):
+        if self.flush_thread and self.flush_thread.is_alive():
+            return
+
         self.flush_thread = FlushWorker(
             self.uploader,
             self.pipe,
             self.buffer_capacity,
             self.flush_interval
         )
-        if not self.flush_thread.is_alive():
-            self.flush_thread.start()
+        self.flush_thread.start()
 
     def emit(self, record):
         try:
-            if not self.flush_thread.is_alive():
-                self.flush_thread.start()
+            self.ensure_flush_thread_alive()
 
             message = self.format(record)
             frame = create_frame(record, message, self.context, include_extra_attributes=self.include_extra_attributes)

@@ -8,7 +8,7 @@ import __main__
 def create_frame(record, message, context, include_extra_attributes=False):
     r = record.__dict__
     # Django sends a request object in the record, which is not JSON serializable
-    if not isinstance(r["request"], (dict, list, bool, int, float, str)) :
+    if "request" in r and not isinstance(r["request"], (dict, list, bool, int, float, str)) :
         del r["request"]
     frame = {}
     # Python 3 only solution if we ever drop Python 2.7

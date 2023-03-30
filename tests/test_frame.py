@@ -5,10 +5,10 @@ from logtail.handler import LogtailHandler
 from logtail.helpers import LogtailContext
 from sys import version_info
 import datetime
-import unittest2
+import unittest
 import logging
 
-class TestLogtailLogEntry(unittest2.TestCase):
+class TestLogtailLogEntry(unittest.TestCase):
     def test_create_frame_happy_path(self):
         handler = LogtailHandler(source_token="some-source-token")
         log_record = logging.LogRecord("logtail-test", 20, "/some/path", 10, "Some log message", [], None)

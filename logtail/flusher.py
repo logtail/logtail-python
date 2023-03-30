@@ -12,7 +12,7 @@ RETRY_SCHEDULE = (1, 10, 60)  # seconds
 class FlushWorker(threading.Thread):
     def __init__(self, upload, pipe, buffer_capacity, flush_interval):
         threading.Thread.__init__(self)
-        self.parent_thread = threading.currentThread()
+        self.parent_thread = threading.current_thread()
         self.upload = upload
         self.pipe = pipe
         self.buffer_capacity = buffer_capacity

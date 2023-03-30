@@ -6,13 +6,10 @@ on:
 
 jobs:
   build:
-    # As long as we need Python 2.7 here in the test, we can only use up to Ubuntu 20.
-    # https://github.com/rwth-i6/returnn/issues/1226
-    # 20.04 is a LTS with 2030 support EOL 
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
-        python-version: ['2.7', '3.5', '3.6', '3.7', '3.8', '3.9', '3.10', '3.11']
+        python-version: ['3.7', '3.8', '3.9', '3.10', '3.11']
 
     steps:
     - uses: actions/checkout@v1

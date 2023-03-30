@@ -4,7 +4,7 @@ import mock
 import time
 import threading
 import json
-import unittest2
+import unittest
 import pdb
 import logging
 
@@ -13,7 +13,7 @@ from logtail.formatter import LogtailFormatter
 from logtail.helpers import LogtailContext
 
 
-class TestLogtailFormatter(unittest2.TestCase):
+class TestLogtailFormatter(unittest.TestCase):
     def setUp(self):
         self.context = LogtailContext()
         self.customer = {'id': '1'}

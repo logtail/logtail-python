@@ -2,12 +2,12 @@
 from __future__ import print_function, unicode_literals
 import msgpack
 import mock
-import unittest2
+import unittest
 
 from logtail.uploader import Uploader
 
 
-class TestUploader(unittest2.TestCase):
+class TestUploader(unittest.TestCase):
     host = 'https://in.logtail.com'
     source_token = 'dummy_source_token'
     frame = [1, 2, 3]

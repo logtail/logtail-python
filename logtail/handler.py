@@ -1,7 +1,6 @@
 # coding: utf-8
 from __future__ import print_function, unicode_literals
 import logging
-import multiprocessing
 
 from .compat import queue
 from .helpers import DEFAULT_CONTEXT

@@ -3,13 +3,13 @@ from __future__ import print_function, unicode_literals
 import mock
 import time
 import threading
-import unittest2
+import unittest
 import logging
 
 from logtail.handler import LogtailHandler
 
 
-class TestLogtailHandler(unittest2.TestCase):
+class TestLogtailHandler(unittest.TestCase):
     source_token = 'dummy_source_token'
     host = 'dummy_host'
 

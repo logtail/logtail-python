@@ -1,11 +1,11 @@
 # coding: utf-8
 from __future__ import print_function, unicode_literals
-import unittest2
+import unittest
 
 from logtail import LogtailContext
 
 
-class TestLogtailContext(unittest2.TestCase):
+class TestLogtailContext(unittest.TestCase):
 
     def test_exists(self):
         c = LogtailContext()

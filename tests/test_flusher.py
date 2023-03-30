@@ -3,7 +3,7 @@ from __future__ import print_function, unicode_literals
 import mock
 import time
 import threading
-import unittest2
+import unittest
 
 from logtail.compat import queue
 from logtail.flusher import RETRY_SCHEDULE
@@ -11,7 +11,7 @@ from logtail.flusher import FlushWorker
 from logtail.uploader import Uploader
 
 
-class TestFlushWorker(unittest2.TestCase):
+class TestFlushWorker(unittest.TestCase):
     host = 'https://in.logtail.com'
     source_token = 'dummy_source_token'
     buffer_capacity = 5

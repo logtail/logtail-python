@@ -11,11 +11,11 @@ Experience SQL-compatible structured log management based on ClickHouse. [Learn 
 
 ## Documentation
 
-[Getting started ⇗](https://betterstack.com/docs/logs/javascript/)
+[Getting started ⇗](https://betterstack.com/docs/logs/python/)
 
 ## Need help?
 Please let us know at [hello@betterstack.com](mailto:hello@betterstack.com). We're happy to help!
 
 ---
 
-[ISC license](https://github.com/logtail/logtail-js/blob/master/LICENSE.md), [example project](https://github.com/logtail/logtail-python/tree/master/example-project)
+[ISC license](https://github.com/logtail/logtail-python/blob/master/LICENSE.md), [example project](https://github.com/logtail/logtail-python/tree/master/example-project)

@@ -62,14 +62,7 @@ def _parse_custom_events(record, include_extra_attributes):
 
 
 def _levelname(level):
-    return {
-        'debug': 'debug',
-        'info': 'info',
-        'warning': 'warn',
-        'error': 'error',
-        'critical': 'critical',
-    }[level.lower()]
-
+    return level.lower()
 
 def _relative_to_main_module_if_possible(pathname):
     has_main_module = hasattr(__main__, '__file__')

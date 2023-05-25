@@ -3,6 +3,10 @@ from __future__ import print_function, unicode_literals
 import msgpack
 import requests
 
+class Fake500(object):
+    def __init__(self, exception):
+        self.status_code = 500
+        self.exception = exception
 
 class Uploader(object):
     def __init__(self, source_token, host):
@@ -16,4 +20,7 @@ class Uploader(object):
 
     def __call__(self, frame):
         data = msgpack.packb(frame, use_bin_type=True)
-        return self.session.post(self.host, data=data, headers=self.headers)
+        try:
+            return self.session.post(self.host, data=data, headers=self.headers)
+        except requests.RequestException as e:
+            return Fake500(e)

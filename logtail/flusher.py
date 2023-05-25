@@ -56,12 +56,16 @@ class FlushWorker(threading.Thread):
         # request fails in a way that can be retried, it is retried with an
         # exponential backoff in between attempts.
         if frame:
+            response = None
             for delay in RETRY_SCHEDULE + (None, ):
                 response = self.upload(frame)
                 if not _should_retry(response.status_code):
                     break
                 if delay is not None:
                     time.sleep(delay)
+
+            if response.status_code == 500 and getattr(response, "exception") != None:
+                print('Failed to send logs to Better Stack after {} retries: {}'.format(len(RETRY_SCHEDULE), response.exception))
 
         if shutdown:
             sys.exit(0)

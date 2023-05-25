@@ -7,7 +7,7 @@
 
 [![ISC License](https://img.shields.io/badge/license-ISC-ff69b4.svg)](LICENSE.md)
 [![PyPI package](https://badge.fury.io/py/logtail-python.svg)](https://badge.fury.io/py/logtail-python)
-![Better Stack Python client](https://github.com/logtail/logtail-python/actions/workflows/main.yml/badge.svg?branch=master)
+![Tests](https://github.com/logtail/logtail-python/actions/workflows/main.yml/badge.svg?branch=master)
 
 Experience SQL-compatible structured log management based on ClickHouse. [Learn more ⇗](https://betterstack.com/logs)
 

@@ -1,4 +1,4 @@
-name: Logtail python client
+name: Tests
 
 on:
   - push

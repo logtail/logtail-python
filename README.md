@@ -1,13 +1,15 @@
-# [Logtail](https://betterstack.com/logtail) Python client by [Better Stack](https://betterstack.com/)
+# [Better Stack](https://betterstack.com/logs) Python client
+
+📣 Logtail is now part of Better Stack · [Learn more ⇗](https://betterstack.com/press/introducing-better-stack/)
   
-  [![Logtail python client](https://user-images.githubusercontent.com/19272921/154085622-59997d5a-3f91-4bc9-a815-3b8ead16d28d.jpeg)](https://betterstack.com/logtail)
+[![Better Stack Python client](https://user-images.githubusercontent.com/19272921/154085622-59997d5a-3f91-4bc9-a815-3b8ead16d28d.jpeg)](https://betterstack.com/logs)
 
 
 [![ISC License](https://img.shields.io/badge/license-ISC-ff69b4.svg)](LICENSE.md)
 [![PyPI package](https://badge.fury.io/py/logtail-python.svg)](https://badge.fury.io/py/logtail-python)
-![Logtail python client](https://github.com/logtail/logtail-python/actions/workflows/main.yml/badge.svg?branch=master)
+![Better Stack Python client](https://github.com/logtail/logtail-python/actions/workflows/main.yml/badge.svg?branch=master)
 
-Experience SQL-compatible structured log management based on ClickHouse. [Learn more ⇗](https://logtail.com/)
+Experience SQL-compatible structured log management based on ClickHouse. [Learn more ⇗](https://betterstack.com/logs)
 
 ## Documentation
 

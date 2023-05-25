@@ -1,6 +1,6 @@
-# Logtail Python example project
+# Better Stack Python example project
 
-To help you get started with using Logtail in your Python projects, we have prepared a simple python program that showcases the usage of Logtail logger in Python code.
+To help you get started with using Better Stack in your Python projects, we have prepared a simple python program that showcases the usage of Better Stack logger in Python code.
 
 ## Download the example project
 
@@ -57,7 +57,7 @@ handler = LogtailHandler(source_token=sys.argv[1])
 logger = logging.getLogger(__name__)
 logger.handlers = []
 logger.setLevel(logging.DEBUG) # Set minimal log level
-logger.addHandler(handler) # asign handler to logger
+logger.addHandler(handler) # assign handler to logger
 ```
 
 ### Setting log level
@@ -74,7 +74,7 @@ logger.setLevel(logging.INFO) # Set minimal log level
 
 ```python
 logger.debug('I am using Python!') # This call will be ignored
-logger.info('I am using Logtail!') # This call will be handled
+logger.info('I am using Better Stack!') # This call will be handled
 ```
 
 Code above will generate only one log because the debug level message has lowered severity than the set threshold. 

@@ -1,6 +1,6 @@
 # [Better Stack](https://betterstack.com/logs) Python client
 
-📣 Logtail is now part of Better Stack · [Learn more ⇗](https://betterstack.com/press/introducing-better-stack/)
+📣 Logtail is now part of Better Stack. [Learn more ⇗](https://betterstack.com/press/introducing-better-stack/)
 
 [![Better Stack dashboard](https://github.com/logtail/logtail-python/assets/10132717/e2a1196b-7924-4abc-9b85-055e17b5d499)](https://betterstack.com/logs)
 

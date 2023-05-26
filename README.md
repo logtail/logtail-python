@@ -1,9 +1,8 @@
 # [Better Stack](https://betterstack.com/logs) Python client
 
 📣 Logtail is now part of Better Stack · [Learn more ⇗](https://betterstack.com/press/introducing-better-stack/)
-  
-[![Better Stack Python client](https://user-images.githubusercontent.com/19272921/154085622-59997d5a-3f91-4bc9-a815-3b8ead16d28d.jpeg)](https://betterstack.com/logs)
 
+[![Better Stack](https://github.com/logtail/logtail-python/assets/10132717/f3e54131-1329-48ea-bf19-8f7f30fdeac8)](https://betterstack.com/logs)
 
 [![ISC License](https://img.shields.io/badge/license-ISC-ff69b4.svg)](LICENSE.md)
 [![PyPI package](https://badge.fury.io/py/logtail-python.svg)](https://badge.fury.io/py/logtail-python)

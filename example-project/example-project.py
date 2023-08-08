@@ -1,10 +1,10 @@
 # This is an example project of Logtail python integration
-# This project shocases how to use Logtail in your python projects
-# For more infromation please visit https://github.com/logtail/logtail-python
+# This project showcases how to use Logtail in your python projects
+# For more information please visit https://github.com/logtail/logtail-python
 
 # SETUP
 
-# Import Logtail client library and deault logging library
+# Import Logtail client library and default logging library
 from logtail import LogtailHandler
 import logging
 import sys
@@ -21,10 +21,10 @@ handler = LogtailHandler(source_token=sys.argv[1])
 logger = logging.getLogger(__name__)
 logger.handlers = []
 logger.setLevel(logging.DEBUG) # Set minimal log level
-logger.addHandler(handler) # asign handler to logger
+logger.addHandler(handler) # assign handler to logger
 
 # LOGGING EXAMPLE
-# Following code shocases logger usage
+# Following code showcases logger usage
 
 # Send debug log using the debug() method
 logger.debug('I am using Logtail!')
@@ -32,8 +32,8 @@ logger.debug('I am using Logtail!')
 # Send info level log about interesting events using the info() method
 logger.info('I love Logtail!')
 
-# Send warning level log about warrying events using the warning() method
-# You can also add ecustom structured information to the log by passing it as a second argument
+# Send warning level log about worrying events using the warning() method
+# You can also add custom structured information to the log by passing it as a second argument
 logger.warning('Log structured data', extra={
     'item': {
         'url': "https://fictional-store.com/item-123",
@@ -42,16 +42,16 @@ logger.warning('Log structured data', extra={
 })
 
 # Send error level log about errors in runtime using the error() method
-logger.error('Oops! An error occured!')
+logger.error('Oops! An error occurred!')
 
-# Send critical level log about critical events in runtume using the critical() method
+# Send critical level log about critical events in runtime using the critical() method
 logger.critical('Its not working, needs to be fixes ASP!')
 
 # Send exception level log about errors in runtime using the exception() method
 # Error level log will be sent. Exception info is added to the logging message. 
 # This method should only be called from an exception handler.
 try:
-    nonexisting_function() # Calling nonexisting function
+    nonexisting_function() # Calling non-existing function
 except Exception as Argument:
     logger.exception("Error occurred while calling non-existing function") # Additional info will be added
     # OUTPUT:

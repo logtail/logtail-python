@@ -67,7 +67,7 @@ class FlushWorker(threading.Thread):
             if response.status_code == 500 and getattr(response, "exception") != None:
                 print('Failed to send logs to Better Stack after {} retries: {}'.format(len(RETRY_SCHEDULE), response.exception))
 
-        if shutdown:
+        if shutdown and self.pipe.empty():
             sys.exit(0)
 
 

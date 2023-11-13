@@ -120,8 +120,7 @@ class TestFlushWorker(unittest.TestCase):
         self.assertEqual(self.uploader_calls, len(RETRY_SCHEDULE) + 1)
         self.assertEqual(self.sleep_calls, len(RETRY_SCHEDULE))
 
-    @mock.patch('logtail.flusher.sys.exit')
-    def test_shutdown_condition_empties_queue_and_calls_exit(self, mock_exit):
+    def test_shutdown_condition_empties_queue_and_calls_exit(self):
         self.buffer_capacity = 10
         num_items = 5
         first_frame = list(range(self.buffer_capacity))
@@ -141,4 +140,17 @@ class TestFlushWorker(unittest.TestCase):
 
         fw.step()
         self.assertEqual(self.upload_calls, 1)
-        self.assertEqual(mock_exit.call_count, 1)
+        self.assertFalse(fw.is_alive())
+
+    def test_shutdown_dont_raise_exception_in_thread(self):
+        original_excepthook = threading.excepthook
+        threading.excepthook = mock.Mock()
+
+        _, _, fw = self._setup_worker()
+        fw.parent_thread = mock.MagicMock(is_alive=lambda: False)
+        fw.step()
+
+        self.assertFalse(fw.is_alive())
+        self.assertFalse(threading.excepthook.called)
+
+        threading.excepthook = original_excepthook

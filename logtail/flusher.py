@@ -1,8 +1,8 @@
 # coding: utf-8
 from __future__ import print_function, unicode_literals
-import sys
-import time
+
 import threading
+import time
 
 from .compat import queue
 
@@ -17,9 +17,10 @@ class FlushWorker(threading.Thread):
         self.pipe = pipe
         self.buffer_capacity = buffer_capacity
         self.flush_interval = flush_interval
+        self.should_run = True
 
     def run(self):
-        while True:
+        while self.should_run:
             self.step()
 
     def step(self):
@@ -57,7 +58,7 @@ class FlushWorker(threading.Thread):
         # exponential backoff in between attempts.
         if frame:
             response = None
-            for delay in RETRY_SCHEDULE + (None, ):
+            for delay in RETRY_SCHEDULE + (None,):
                 response = self.upload(frame)
                 if not _should_retry(response.status_code):
                     break
@@ -65,10 +66,14 @@ class FlushWorker(threading.Thread):
                     time.sleep(delay)
 
             if response.status_code == 500 and getattr(response, "exception") != None:
-                print('Failed to send logs to Better Stack after {} retries: {}'.format(len(RETRY_SCHEDULE), response.exception))
+                print(
+                    "Failed to send logs to Better Stack after {} retries: {}".format(
+                        len(RETRY_SCHEDULE), response.exception
+                    )
+                )
 
         if shutdown and self.pipe.empty():
-            sys.exit(0)
+            self.should_run = False
 
 
 def _initial_time_remaining(flush_interval):

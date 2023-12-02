@@ -1,7 +1,7 @@
 # coding: utf-8
 from __future__ import print_function, unicode_literals
 from datetime import datetime
-
+import json
 from os import path
 import __main__
 
@@ -58,7 +58,7 @@ def _parse_custom_events(record, include_extra_attributes):
         if not include_extra_attributes and not isinstance(val, dict):
             continue
         events[key] = val
-    return events
+    return json.loads(json.dumps(events, default=str))
 
 
 def _levelname(level):

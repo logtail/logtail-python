@@ -140,7 +140,7 @@ class TestFlushWorker(unittest.TestCase):
 
         fw.step()
         self.assertEqual(self.upload_calls, 1)
-        self.assertFalse(fw.is_alive())
+        self.assertFalse(fw.should_run)
 
     def test_shutdown_dont_raise_exception_in_thread(self):
         original_excepthook = threading.excepthook

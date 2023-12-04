@@ -120,7 +120,7 @@ class TestFlushWorker(unittest.TestCase):
         self.assertEqual(self.uploader_calls, len(RETRY_SCHEDULE) + 1)
         self.assertEqual(self.sleep_calls, len(RETRY_SCHEDULE))
 
-    def test_shutdown_condition_empties_queue_and_calls_exit(self):
+    def test_shutdown_condition_empties_queue_and_shuts_down(self):
         self.buffer_capacity = 10
         num_items = 5
         first_frame = list(range(self.buffer_capacity))

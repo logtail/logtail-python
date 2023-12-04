@@ -150,7 +150,7 @@ class TestFlushWorker(unittest.TestCase):
         fw.parent_thread = mock.MagicMock(is_alive=lambda: False)
         fw.step()
 
-        self.assertFalse(fw.is_alive())
+        self.assertFalse(fw.should_run)
         self.assertFalse(threading.excepthook.called)
 
         threading.excepthook = original_excepthook

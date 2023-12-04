@@ -143,7 +143,7 @@ class TestFlushWorker(unittest.TestCase):
         self.assertFalse(fw.should_run)
 
     # test relies on overriding excepthook which is available from 3.8+
-    @pytest.mark.skipif(sys.version_info <= (3, 7))
+    @unittest.skipIf(sys.version_info <= (3, 7))
     def test_shutdown_dont_raise_exception_in_thread(self):
         original_excepthook = threading.excepthook
         threading.excepthook = mock.Mock()

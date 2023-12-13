@@ -45,7 +45,7 @@ logger.warning('Log structured data', extra={
 logger.error('Oops! An error occurred!')
 
 # Send critical level log about critical events in runtime using the critical() method
-logger.critical('Its not working, needs to be fixes ASP!')
+logger.critical('Its not working, needs to be fixed ASAP!')
 
 # Send exception level log about errors in runtime using the exception() method
 # Error level log will be sent. Exception info is added to the logging message. 

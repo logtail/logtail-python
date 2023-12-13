@@ -44,7 +44,7 @@ class TestLogtailLogEntry(unittest.TestCase):
         log_record.__dict__.update(extra) # This is how `extra` gets included in the LogRecord
 
         frame = create_frame(log_record, log_record.getMessage(), LogtailContext())
-        self.assertRegex(frame['extra']['unserializable'], r'^<tests\.test_frame\.UnserializableObject object at 0x[0-f]{9}>$')
+        self.assertRegex(frame['extra']['unserializable'], r'^<tests\.test_frame\.UnserializableObject object at 0x[0-f]+>$')
 
     def test_create_frame_with_context(self):
         log_record = logging.LogRecord("logtail-test", 20, "/some/path", 10, "Some log message", [], None)
@@ -62,7 +62,7 @@ class TestLogtailLogEntry(unittest.TestCase):
         with context(data={'unserializable': UnserializableObject()}):
             frame = create_frame(log_record, log_record.getMessage(), context)
 
-        self.assertRegex(frame['context']['data']['unserializable'], r'^<tests\.test_frame\.UnserializableObject object at 0x[0-f]{9}>$')
+        self.assertRegex(frame['context']['data']['unserializable'], r'^<tests\.test_frame\.UnserializableObject object at 0x[0-f]+>$')
 
 class UnserializableObject(object):
     """ Because this is a custom class, it cannot be serialized into JSON. """

@@ -1,6 +1,7 @@
 # coding: utf-8
 from __future__ import print_function, unicode_literals
 import logging
+import json
 
 from .compat import queue
 from .helpers import DEFAULT_CONTEXT
@@ -60,8 +61,9 @@ class LogtailHandler(logging.Handler):
 
             message = self.format(record)
             frame = create_frame(record, message, self.context, include_extra_attributes=self.include_extra_attributes)
+            serializable_frame = json.loads(json.dumps(frame, default=str))
             try:
-                self.pipe.put(frame, block=(not self.drop_extra_events))
+                self.pipe.put(serializable_frame, block=(not self.drop_extra_events))
             except queue.Full:
                 # Only raised when not blocking, which means that extra events
                 # should be dropped.

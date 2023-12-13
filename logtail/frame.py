@@ -1,7 +1,7 @@
 # coding: utf-8
 from __future__ import print_function, unicode_literals
 from datetime import datetime
-import json
+
 from os import path
 import __main__
 
@@ -35,17 +35,13 @@ def create_frame(record, message, context, include_extra_attributes=False):
 
     # Custom context
     if context.exists():
-        ctx.update(_ensure_serializable(context.collapse()))
+        ctx.update(context.collapse())
 
     events = _parse_custom_events(record, include_extra_attributes)
     if events:
-        frame.update(_ensure_serializable(events))
+        frame.update(events)
 
     return frame
-
-
-def _ensure_serializable(data):
-    return json.loads(json.dumps(data, default=str))
 
 
 def _parse_custom_events(record, include_extra_attributes):

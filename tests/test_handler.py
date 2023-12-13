@@ -6,7 +6,7 @@ import threading
 import unittest
 import logging
 
-from logtail.handler import LogtailHandler
+from logtail import LogtailHandler, context
 
 
 class TestLogtailHandler(unittest.TestCase):
@@ -138,3 +138,46 @@ class TestLogtailHandler(unittest.TestCase):
 
         handler.raise_exceptions = False
         logger.critical('hello')
+
+    @mock.patch('logtail.handler.FlushWorker')
+    def test_can_send_unserializable_extra_data(self, MockWorker):
+        buffer_capacity = 1
+        handler = LogtailHandler(
+            source_token=self.source_token,
+            buffer_capacity=buffer_capacity
+        )
+
+        logger = logging.getLogger(__name__)
+        logger.handlers = []
+        logger.addHandler(handler)
+        logger.info('hello', extra={'data': {'unserializable': UnserializableObject()}})
+
+        log_entry = handler.pipe.get()
+
+        self.assertEqual(log_entry['message'], 'hello')
+        self.assertRegex(log_entry['data']['unserializable'], r'^<tests\.test_handler\.UnserializableObject object at 0x[0-f]+>$')
+        self.assertTrue(handler.pipe.empty())
+
+    @mock.patch('logtail.handler.FlushWorker')
+    def test_can_send_unserializable_extra_context(self, MockWorker):
+        buffer_capacity = 1
+        handler = LogtailHandler(
+            source_token=self.source_token,
+            buffer_capacity=buffer_capacity
+        )
+
+        logger = logging.getLogger(__name__)
+        logger.handlers = []
+        logger.addHandler(handler)
+        with context(data={'unserializable': UnserializableObject()}):
+            logger.info('hello')
+
+        log_entry = handler.pipe.get()
+
+        self.assertEqual(log_entry['message'], 'hello')
+        self.assertRegex(log_entry['context']['data']['unserializable'], r'^<tests\.test_handler\.UnserializableObject object at 0x[0-f]+>$')
+        self.assertTrue(handler.pipe.empty())
+
+
+class UnserializableObject(object):
+    """ Because this is a custom class, it cannot be serialized into JSON. """

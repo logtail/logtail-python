@@ -14,7 +14,7 @@ def create_frame(record, message, context, include_extra_attributes=False):
     # Python 3 only solution if we ever drop Python 2.7
     # frame['dt'] = datetime.utcfromtimestamp(r['created']).replace(tzinfo=timezone.utc).isoformat()
     frame['dt'] = "{}+00:00".format(datetime.utcfromtimestamp(r['created']).isoformat())
-    frame['level'] = level = _levelname(r['levelname'])
+    frame['level'] = _levelname(r['levelname'])
     frame['severity'] = int(r['levelno'] / 10)
     frame['message'] = message
     frame['context'] = ctx = {}
@@ -48,7 +48,7 @@ def _parse_custom_events(record, include_extra_attributes):
     default_keys = {
         'args', 'asctime', 'created', 'exc_info', 'exc_text', 'pathname',
         'funcName', 'levelname', 'levelno', 'lineno', 'module', 'msecs',
-        'message', 'msg', 'name', 'pathname', 'process', 'processName',
+        'message', 'msg', 'name', 'process', 'processName',
         'relativeCreated', 'thread', 'threadName'
     }
     events = {}

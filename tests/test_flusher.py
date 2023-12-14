@@ -25,12 +25,11 @@ class TestFlushWorker(unittest.TestCase):
         return pipe, uploader, fw
 
     def test_is_thread(self):
-        pipe, uploader, fw = self._setup_worker()
+        _, _, fw = self._setup_worker()
         self.assertIsInstance(fw, threading.Thread)
 
     def test_flushes_when_queue_is_full(self):
         first_frame = list(range(self.buffer_capacity))
-        second_frame = list(range(self.buffer_capacity, self.buffer_capacity * 2))
         self.calls = 0
         self.flush_interval = 1000
 

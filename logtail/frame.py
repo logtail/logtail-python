@@ -41,8 +41,7 @@ def create_frame(record, message, context, include_extra_attributes=False):
     if events:
         frame.update(events)
 
-    return frame
-
+    return _remove_circular_dependencies(frame)
 
 def _parse_custom_events(record, include_extra_attributes):
     default_keys = {
@@ -60,6 +59,22 @@ def _parse_custom_events(record, include_extra_attributes):
         events[key] = val
     return events
 
+def _remove_circular_dependencies(obj, memo=None):
+    if memo is None:
+        memo = set()
+    if id(obj) in memo:
+        return "<omitted circular reference>"
+    memo.add(id(obj))
+    if isinstance(obj, dict):
+        new_dict = {}
+        for key, value in obj.items():
+            new_dict[key] = _remove_circular_dependencies(value, memo)
+        return new_dict
+    elif isinstance(obj, list):
+        new_list = [_remove_circular_dependencies(item, memo) for item in obj]
+        return new_list
+    else:
+        return obj
 
 def _levelname(level):
     return level.lower()

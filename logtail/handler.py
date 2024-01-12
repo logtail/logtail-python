@@ -68,7 +68,6 @@ class LogtailHandler(logging.Handler):
                 # Only raised when not blocking, which means that extra events
                 # should be dropped.
                 self.dropcount += 1
-                pass
         except Exception as e:
             if self.raise_exceptions:
                 raise e

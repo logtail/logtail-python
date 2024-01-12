@@ -159,7 +159,7 @@ class TestLogtailHandler(unittest.TestCase):
         self.assertTrue(handler.pipe.empty())
 
     @mock.patch('logtail.handler.FlushWorker')
-    def test_can_send_unserializable_extra_context(self, MockWorker):
+    def test_can_send_unserializable_context(self, MockWorker):
         buffer_capacity = 1
         handler = LogtailHandler(
             source_token=self.source_token,
@@ -176,6 +176,50 @@ class TestLogtailHandler(unittest.TestCase):
 
         self.assertEqual(log_entry['message'], 'hello')
         self.assertRegex(log_entry['context']['data']['unserializable'], r'^<tests\.test_handler\.UnserializableObject object at 0x[0-f]+>$')
+        self.assertTrue(handler.pipe.empty())
+
+    @mock.patch('logtail.handler.FlushWorker')
+    def test_can_send_circular_dependency_in_extra_data(self, MockWorker):
+        buffer_capacity = 1
+        handler = LogtailHandler(
+            source_token=self.source_token,
+            buffer_capacity=buffer_capacity
+        )
+
+        logger = logging.getLogger(__name__)
+        logger.handlers = []
+        logger.addHandler(handler)
+        circular_dependency = {'egg': {}}
+        circular_dependency['egg']['chicken'] = circular_dependency
+        logger.info('hello', extra={'data': circular_dependency})
+
+        log_entry = handler.pipe.get()
+
+        self.assertEqual(log_entry['message'], 'hello')
+        self.assertEqual(log_entry['data']['egg']['chicken'], "<omitted circular reference>")
+        self.assertTrue(handler.pipe.empty())
+
+
+    @mock.patch('logtail.handler.FlushWorker')
+    def test_can_send_circular_dependency_in_context(self, MockWorker):
+        buffer_capacity = 1
+        handler = LogtailHandler(
+            source_token=self.source_token,
+            buffer_capacity=buffer_capacity
+        )
+
+        logger = logging.getLogger(__name__)
+        logger.handlers = []
+        logger.addHandler(handler)
+        circular_dependency = {'egg': {}}
+        circular_dependency['egg']['chicken'] = circular_dependency
+        with context(data=circular_dependency):
+            logger.info('hello')
+
+        log_entry = handler.pipe.get()
+
+        self.assertEqual(log_entry['message'], 'hello')
+        self.assertEqual(log_entry['context']['data']['egg']['chicken']['egg'], "<omitted circular reference>")
         self.assertTrue(handler.pipe.empty())
 
 

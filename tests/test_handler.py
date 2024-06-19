@@ -34,7 +34,8 @@ class TestLogtailHandler(unittest.TestCase):
     def test_handler_creates_and_starts_worker_from_args_after_first_log(self, MockWorker):
         buffer_capacity = 9
         flush_interval = 9
-        handler = LogtailHandler(source_token=self.source_token, buffer_capacity=buffer_capacity, flush_interval=flush_interval)
+        check_interval = 4
+        handler = LogtailHandler(source_token=self.source_token, buffer_capacity=buffer_capacity, flush_interval=flush_interval, check_interval=check_interval)
 
         self.assertFalse(MockWorker.called)
 
@@ -47,7 +48,8 @@ class TestLogtailHandler(unittest.TestCase):
             handler.uploader,
             handler.pipe,
             buffer_capacity,
-            flush_interval
+            flush_interval,
+            check_interval,
         )
         self.assertEqual(handler.flush_thread.start.call_count, 1)
 

@@ -17,11 +17,12 @@ class TestFlushWorker(unittest.TestCase):
     source_token = 'dummy_source_token'
     buffer_capacity = 5
     flush_interval = 2
+    check_interval = 0.01
 
     def _setup_worker(self, uploader=None):
         pipe = queue.Queue(maxsize=self.buffer_capacity)
         uploader = uploader or Uploader(self.source_token, self.host)
-        fw = FlushWorker(uploader, pipe, self.buffer_capacity, self.flush_interval)
+        fw = FlushWorker(uploader, pipe, self.buffer_capacity, self.flush_interval, self.check_interval)
         return pipe, uploader, fw
 
     def test_is_thread(self):

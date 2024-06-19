@@ -6,6 +6,8 @@ import time
 import threading
 import unittest
 
+from unittest.mock import patch
+
 from logtail.compat import queue
 from logtail.flusher import RETRY_SCHEDULE
 from logtail.flusher import FlushWorker
@@ -17,11 +19,12 @@ class TestFlushWorker(unittest.TestCase):
     source_token = 'dummy_source_token'
     buffer_capacity = 5
     flush_interval = 2
+    check_interval = 0.01
 
     def _setup_worker(self, uploader=None):
         pipe = queue.Queue(maxsize=self.buffer_capacity)
         uploader = uploader or Uploader(self.source_token, self.host)
-        fw = FlushWorker(uploader, pipe, self.buffer_capacity, self.flush_interval)
+        fw = FlushWorker(uploader, pipe, self.buffer_capacity, self.flush_interval, self.check_interval)
         return pipe, uploader, fw
 
     def test_is_thread(self):
@@ -50,7 +53,7 @@ class TestFlushWorker(unittest.TestCase):
 
         self.assertEqual(self.calls, 1)
 
-    @mock.patch('logtail.flusher._calculate_time_remaining')
+    @patch('logtail.flusher._calculate_time_remaining')
     def test_flushes_after_interval(self, calculate_time_remaining):
         self.buffer_capacity = 10
         num_items = 2
@@ -82,8 +85,8 @@ class TestFlushWorker(unittest.TestCase):
         self.assertEqual(self.upload_calls, 1)
         self.assertEqual(self.timeout_calls, 2)
 
-    @mock.patch('logtail.flusher._calculate_time_remaining')
-    @mock.patch('logtail.flusher._initial_time_remaining')
+    @patch('logtail.flusher._calculate_time_remaining')
+    @patch('logtail.flusher._initial_time_remaining')
     def test_does_nothing_without_any_items(self, initial_time_remaining, calculate_time_remaining):
         calculate_time_remaining.side_effect = lambda a,b: 0.0
         initial_time_remaining.side_effect = lambda a: 0.0001
@@ -95,7 +98,7 @@ class TestFlushWorker(unittest.TestCase):
         fw.step()
         self.assertFalse(uploader.called)
 
-    @mock.patch('logtail.flusher.time.sleep')
+    @patch('logtail.flusher.time.sleep')
     def test_retries_according_to_schedule(self, mock_sleep):
         first_frame = list(range(self.buffer_capacity))
 

@@ -10,14 +10,17 @@ RETRY_SCHEDULE = (1, 10, 60)  # seconds
 
 
 class FlushWorker(threading.Thread):
-    def __init__(self, upload, pipe, buffer_capacity, flush_interval):
+    def __init__(self, upload, pipe, buffer_capacity, flush_interval, check_interval):
         threading.Thread.__init__(self)
         self.parent_thread = threading.current_thread()
         self.upload = upload
         self.pipe = pipe
         self.buffer_capacity = buffer_capacity
         self.flush_interval = flush_interval
+        self.check_interval = check_interval
         self.should_run = True
+        self._flushing = False
+        self._clean = True
 
     def run(self):
         while self.should_run:
@@ -27,6 +30,7 @@ class FlushWorker(threading.Thread):
         last_flush = time.time()
         time_remaining = _initial_time_remaining(self.flush_interval)
         frame = []
+        self._clean = True
 
         # If the parent thread has exited but there are still outstanding
         # events, attempt to send them before exiting.
@@ -38,16 +42,17 @@ class FlushWorker(threading.Thread):
         # `flush_interval` seconds have passed without sending any events.
         while len(frame) < self.buffer_capacity and time_remaining > 0:
             try:
-                # Blocks for up to 1.0 seconds for each item to prevent
+                # Blocks for up to `check_interval` seconds for each item to prevent
                 # spinning and burning CPU unnecessarily. Could block for the
                 # entire amount of `time_remaining` but then in the case that
                 # the parent thread has exited, that entire amount of time
                 # would be waited before this child worker thread exits.
-                entry = self.pipe.get(block=(not shutdown), timeout=1.0)
+                entry = self.pipe.get(block=(not shutdown), timeout=self.check_interval)
+                self._clean = False
                 frame.append(entry)
                 self.pipe.task_done()
             except queue.Empty:
-                if shutdown:
+                if shutdown or self._flushing:
                     break
             shutdown = not self.parent_thread.is_alive()
             time_remaining = _calculate_time_remaining(last_flush, self.flush_interval)
@@ -68,9 +73,15 @@ class FlushWorker(threading.Thread):
             if response.status_code == 500 and getattr(response, "exception") != None:
                 print('Failed to send logs to Better Stack after {} retries: {}'.format(len(RETRY_SCHEDULE), response.exception))
 
+        self._clean = True
         if shutdown and self.pipe.empty():
             self.should_run = False
 
+    def flush(self):
+        self._flushing = True
+        while not self._clean or not self.pipe.empty():
+            time.sleep(self.check_interval)
+        self._flushing = False
 
 def _initial_time_remaining(flush_interval):
     return flush_interval

@@ -12,6 +12,7 @@ from .frame import create_frame
 DEFAULT_HOST = 'https://in.logs.betterstack.com'
 DEFAULT_BUFFER_CAPACITY = 1000
 DEFAULT_FLUSH_INTERVAL = 1
+DEFAULT_CHECK_INTERVAL = 0.1
 DEFAULT_RAISE_EXCEPTIONS = False
 DEFAULT_DROP_EXTRA_EVENTS = True
 DEFAULT_INCLUDE_EXTRA_ATTRIBUTES = True
@@ -23,6 +24,7 @@ class LogtailHandler(logging.Handler):
                  host=DEFAULT_HOST,
                  buffer_capacity=DEFAULT_BUFFER_CAPACITY,
                  flush_interval=DEFAULT_FLUSH_INTERVAL,
+                 check_interval=DEFAULT_CHECK_INTERVAL,
                  raise_exceptions=DEFAULT_RAISE_EXCEPTIONS,
                  drop_extra_events=DEFAULT_DROP_EXTRA_EVENTS,
                  include_extra_attributes=DEFAULT_INCLUDE_EXTRA_ATTRIBUTES,
@@ -38,6 +40,7 @@ class LogtailHandler(logging.Handler):
         self.include_extra_attributes = include_extra_attributes
         self.buffer_capacity = buffer_capacity
         self.flush_interval = flush_interval
+        self.check_interval = check_interval
         self.raise_exceptions = raise_exceptions
         self.dropcount = 0
         # Do not initialize the flush thread yet because it causes issues on Render.
@@ -51,7 +54,8 @@ class LogtailHandler(logging.Handler):
             self.uploader,
             self.pipe,
             self.buffer_capacity,
-            self.flush_interval
+            self.flush_interval,
+            self.check_interval,
         )
         self.flush_thread.start()
 
@@ -71,3 +75,7 @@ class LogtailHandler(logging.Handler):
         except Exception as e:
             if self.raise_exceptions:
                 raise e
+
+    def flush(self):
+        if self.flush_thread and self.flush_thread.is_alive():
+             self.flush_thread.flush()

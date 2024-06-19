@@ -6,20 +6,22 @@ import threading
 import unittest
 import logging
 
-from logtail import LogtailHandler, context
+from unittest.mock import patch
 
+from logtail import LogtailHandler, context
+from logtail.handler import FlushWorker
 
 class TestLogtailHandler(unittest.TestCase):
     source_token = 'dummy_source_token'
     host = 'dummy_host'
 
-    @mock.patch('logtail.handler.FlushWorker')
+    @patch('logtail.handler.FlushWorker')
     def test_handler_creates_uploader_from_args(self, MockWorker):
         handler = LogtailHandler(source_token=self.source_token, host=self.host)
         self.assertEqual(handler.uploader.source_token, self.source_token)
         self.assertEqual(handler.uploader.host, self.host)
 
-    @mock.patch('logtail.handler.FlushWorker')
+    @patch('logtail.handler.FlushWorker')
     def test_handler_creates_pipe_from_args(self, MockWorker):
         buffer_capacity = 9
         flush_interval = 1
@@ -30,7 +32,7 @@ class TestLogtailHandler(unittest.TestCase):
         )
         self.assertTrue(handler.pipe.empty())
 
-    @mock.patch('logtail.handler.FlushWorker')
+    @patch('logtail.handler.FlushWorker')
     def test_handler_creates_and_starts_worker_from_args_after_first_log(self, MockWorker):
         buffer_capacity = 9
         flush_interval = 9
@@ -53,7 +55,7 @@ class TestLogtailHandler(unittest.TestCase):
         )
         self.assertEqual(handler.flush_thread.start.call_count, 1)
 
-    @mock.patch('logtail.handler.FlushWorker')
+    @patch('logtail.handler.FlushWorker')
     def test_emit_starts_thread_if_not_alive(self, MockWorker):
         handler = LogtailHandler(source_token=self.source_token)
 
@@ -69,7 +71,7 @@ class TestLogtailHandler(unittest.TestCase):
 
         self.assertEqual(handler.flush_thread.start.call_count, 2)
 
-    @mock.patch('logtail.handler.FlushWorker')
+    @patch('logtail.handler.FlushWorker')
     def test_emit_drops_records_if_configured(self, MockWorker):
         buffer_capacity = 1
         handler = LogtailHandler(
@@ -89,7 +91,7 @@ class TestLogtailHandler(unittest.TestCase):
         self.assertTrue(handler.pipe.empty())
         self.assertEqual(handler.dropcount, 1)
 
-    @mock.patch('logtail.handler.FlushWorker')
+    @patch('logtail.handler.FlushWorker')
     def test_emit_does_not_drop_records_if_configured(self, MockWorker):
         buffer_capacity = 1
         handler = LogtailHandler(
@@ -120,7 +122,7 @@ class TestLogtailHandler(unittest.TestCase):
 
         self.assertEqual(handler.dropcount, 0)
 
-    @mock.patch('logtail.handler.FlushWorker')
+    @patch('logtail.handler.FlushWorker')
     def test_error_suppression(self, MockWorker):
         buffer_capacity = 1
         handler = LogtailHandler(
@@ -141,7 +143,7 @@ class TestLogtailHandler(unittest.TestCase):
         handler.raise_exceptions = False
         logger.critical('hello')
 
-    @mock.patch('logtail.handler.FlushWorker')
+    @patch('logtail.handler.FlushWorker')
     def test_can_send_unserializable_extra_data(self, MockWorker):
         buffer_capacity = 1
         handler = LogtailHandler(
@@ -160,7 +162,7 @@ class TestLogtailHandler(unittest.TestCase):
         self.assertRegex(log_entry['data']['unserializable'], r'^<tests\.test_handler\.UnserializableObject object at 0x[0-f]+>$')
         self.assertTrue(handler.pipe.empty())
 
-    @mock.patch('logtail.handler.FlushWorker')
+    @patch('logtail.handler.FlushWorker')
     def test_can_send_unserializable_context(self, MockWorker):
         buffer_capacity = 1
         handler = LogtailHandler(
@@ -180,7 +182,7 @@ class TestLogtailHandler(unittest.TestCase):
         self.assertRegex(log_entry['context']['data']['unserializable'], r'^<tests\.test_handler\.UnserializableObject object at 0x[0-f]+>$')
         self.assertTrue(handler.pipe.empty())
 
-    @mock.patch('logtail.handler.FlushWorker')
+    @patch('logtail.handler.FlushWorker')
     def test_can_send_circular_dependency_in_extra_data(self, MockWorker):
         buffer_capacity = 1
         handler = LogtailHandler(
@@ -202,7 +204,7 @@ class TestLogtailHandler(unittest.TestCase):
         self.assertTrue(handler.pipe.empty())
 
 
-    @mock.patch('logtail.handler.FlushWorker')
+    @patch('logtail.handler.FlushWorker')
     def test_can_send_circular_dependency_in_context(self, MockWorker):
         buffer_capacity = 1
         handler = LogtailHandler(

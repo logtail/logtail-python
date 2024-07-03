@@ -16,6 +16,7 @@ DEFAULT_CHECK_INTERVAL = 0.1
 DEFAULT_RAISE_EXCEPTIONS = False
 DEFAULT_DROP_EXTRA_EVENTS = True
 DEFAULT_INCLUDE_EXTRA_ATTRIBUTES = True
+DEFAULT_STATIC_PROPS = {}
 
 
 class LogtailHandler(logging.Handler):
@@ -29,6 +30,7 @@ class LogtailHandler(logging.Handler):
                  drop_extra_events=DEFAULT_DROP_EXTRA_EVENTS,
                  include_extra_attributes=DEFAULT_INCLUDE_EXTRA_ATTRIBUTES,
                  context=DEFAULT_CONTEXT,
+                 static_props=DEFAULT_STATIC_PROPS,
                  level=logging.NOTSET):
         super(LogtailHandler, self).__init__(level=level)
         self.source_token = source_token
@@ -42,6 +44,7 @@ class LogtailHandler(logging.Handler):
         self.flush_interval = flush_interval
         self.check_interval = check_interval
         self.raise_exceptions = raise_exceptions
+        self.static_props = static_props
         self.dropcount = 0
         # Do not initialize the flush thread yet because it causes issues on Render.
         self.flush_thread = None
@@ -64,7 +67,7 @@ class LogtailHandler(logging.Handler):
             self.ensure_flush_thread_alive()
 
             message = self.format(record)
-            frame = create_frame(record, message, self.context, include_extra_attributes=self.include_extra_attributes)
+            frame = create_frame(record, message, self.context, include_extra_attributes=self.include_extra_attributes, static_props=self.static_props)
             serializable_frame = json.loads(json.dumps(frame, default=str))
             try:
                 self.pipe.put(serializable_frame, block=(not self.drop_extra_events))

@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from os import path
 import __main__
 
-def create_frame(record, message, context, include_extra_attributes=False):
+def create_frame(record, message, context, include_extra_attributes=False, static_props={}):
     r = record.__dict__
     # Django sends a request object in the record, which is not JSON serializable
     if "request" in r and not isinstance(r["request"], (dict, list, bool, int, float, str)) :
@@ -16,6 +16,7 @@ def create_frame(record, message, context, include_extra_attributes=False):
     frame['severity'] = int(r['levelno'] / 10)
     frame['message'] = message
     frame['context'] = ctx = {}
+    frame.update(static_props)
 
     # Runtime context
     ctx['runtime'] = runtime = {}

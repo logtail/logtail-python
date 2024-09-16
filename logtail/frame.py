@@ -60,18 +60,23 @@ def _parse_custom_events(record, include_extra_attributes):
 def _remove_circular_dependencies(obj, memo=None):
     if memo is None:
         memo = set()
+    # Skip immutable types, which can't contain circular dependencies
+    if isinstance(obj, (str, int, float, bool)):
+        return obj
     if id(obj) in memo:
         return "<omitted circular reference>"
+    memo.add(id(obj))
     if isinstance(obj, dict):
-        memo.add(id(obj))
         new_dict = {}
         for key, value in obj.items():
             new_dict[key] = _remove_circular_dependencies(value, memo)
         return new_dict
     elif isinstance(obj, list):
-        memo.add(id(obj))
-        new_list = [_remove_circular_dependencies(item, memo) for item in obj]
-        return new_list
+        return [_remove_circular_dependencies(item, memo) for item in obj]
+    elif isinstance(obj, tuple):
+        return tuple(_remove_circular_dependencies(item, memo) for item in obj)
+    elif isinstance(obj, set):
+        return {_remove_circular_dependencies(item, memo) for item in obj}
     else:
         return obj
 

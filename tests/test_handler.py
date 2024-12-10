@@ -225,6 +225,27 @@ class TestLogtailHandler(unittest.TestCase):
         self.assertTrue(handler.pipe.empty())
 
     @patch('logtail.handler.FlushWorker')
+    def test_can_have_multiple_instance_of_same_array_in_extra_data(self, MockWorker):
+        buffer_capacity = 1
+        handler = LogtailHandler(
+            source_token=self.source_token,
+            buffer_capacity=buffer_capacity
+        )
+
+        logger = logging.getLogger(__name__)
+        logger.handlers = []
+        logger.addHandler(handler)
+        test_array = ['this is a test string']
+        logger.info('hello', extra={'test1': test_array, 'test2': test_array})
+
+        log_entry = handler.pipe.get()
+
+        self.assertEqual(log_entry['message'], 'hello')
+        self.assertEqual(log_entry['test1'], ['this is a test string'])
+        self.assertEqual(log_entry['test2'], ['this is a test string'])
+        self.assertTrue(handler.pipe.empty())
+
+    @patch('logtail.handler.FlushWorker')
     def test_can_send_circular_dependency_in_context(self, MockWorker):
         buffer_capacity = 1
         handler = LogtailHandler(

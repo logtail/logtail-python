@@ -10,12 +10,12 @@ import logging
 import sys
 
 # Check for program arguments
-if len(sys.argv) != 2:
-    print("Program requires source token as an argument, run the program as followed\npython example-project.py <source-token>");
+if len(sys.argv) != 3:
+    print("Program requires source token and ingesting host as an argument, run the program as followed\npython example-project.py <source_token> <ingesting_host>");
     sys.exit();
 
 # Create handler
-handler = LogtailHandler(source_token=sys.argv[1])
+handler = LogtailHandler(source_token=sys.argv[1], host=sys.argv[2])
 
 # Create logger
 logger = logging.getLogger(__name__)

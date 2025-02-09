@@ -17,10 +17,10 @@ pip install logtail-python
 To run the example application, simply run the following command:
 
 ```bash
-python example-project.py <source-token>
+python example-project.py <source_token> <ingesting_host>
 ```
 
-Don't forget to replace `<source-token>` with your actual source toke which you can find in the source settings.
+_Don't forget to replace `<source_token>` and `<ingesting_host>` with your actual source token and ingesting host which you can find by going to **[Sources](https://telemetry.betterstack.com/team/0/sources) -> Configure** in Better Stack._
 
 If you have trouble running the command above, check your Python installation and try running it with the `python3` command instead.
 
@@ -51,7 +51,7 @@ Then we need to create a `handler`, which will be responsible for handling our l
 
 ```python
 # Create handler
-handler = LogtailHandler(source_token=sys.argv[1])
+handler = LogtailHandler(source_token=sys.argv[1], host=sys.argv[2])
 
 # Create logger
 logger = logging.getLogger(__name__)

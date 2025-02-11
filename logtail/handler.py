@@ -9,7 +9,7 @@ from .flusher import FlushWorker
 from .uploader import Uploader
 from .frame import create_frame
 
-DEFAULT_HOST = 'https://in.logs.betterstack.com'
+DEFAULT_HOST = 'in.logs.betterstack.com'
 DEFAULT_BUFFER_CAPACITY = 1000
 DEFAULT_FLUSH_INTERVAL = 1
 DEFAULT_CHECK_INTERVAL = 0.1
@@ -32,7 +32,10 @@ class LogtailHandler(logging.Handler):
                  level=logging.NOTSET):
         super(LogtailHandler, self).__init__(level=level)
         self.source_token = source_token
-        self.host = host
+        if host.startswith('https://') or host.startswith('http://'):
+            self.host = host
+        else:
+            self.host = "https://" + host
         self.context = context
         self.pipe = queue.Queue(maxsize=buffer_capacity)
         self.uploader = Uploader(self.source_token, self.host)

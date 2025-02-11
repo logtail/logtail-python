@@ -19,7 +19,7 @@ class TestLogtailHandler(unittest.TestCase):
     def test_handler_creates_uploader_from_args(self, MockWorker):
         handler = LogtailHandler(source_token=self.source_token, host=self.host)
         self.assertEqual(handler.uploader.source_token, self.source_token)
-        self.assertEqual(handler.uploader.host, self.host)
+        self.assertEqual(handler.uploader.host, "https://" + self.host)
 
     @patch('logtail.handler.FlushWorker')
     def test_handler_creates_pipe_from_args(self, MockWorker):

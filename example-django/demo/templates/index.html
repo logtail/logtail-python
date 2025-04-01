@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logtail Django Demo</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+        .button-container {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #3498db;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        .button:hover {
+            background-color: #2980b9;
+        }
+        .button.error {
+            background-color: #e74c3c;
+        }
+        .button.error:hover {
+            background-color: #c0392b;
+        }
+        .button.warning {
+            background-color: #f1c40f;
+        }
+        .button.warning:hover {
+            background-color: #f39c12;
+        }
+        .description {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Logtail Django Demo</h1>
+        
+        <div class="button-container">
+            <a href="/" class="button">Trigger Info Log</a>
+            <a href="/trigger-warning/" class="button warning">Trigger Warning Log</a>
+            <a href="/trigger-error/" class="button error">Trigger Error Log</a>
+        </div>
+
+        <div class="description">
+            <h2>About this Demo</h2>
+            <p>This demo shows how to integrate Logtail with Django for structured logging. Each button above triggers a different type of log:</p>
+            <ul>
+                <li><strong>Info Log:</strong> Logs basic information about the request including the user agent</li>
+                <li><strong>Warning Log:</strong> Demonstrates logging with custom data structures</li>
+                <li><strong>Error Log:</strong> Shows how exceptions are logged with full stack traces</li>
+            </ul>
+            <p>Check your Logtail dashboard to see the logged events!</p>
+        </div>
+    </div>
+</body>
+</html> 

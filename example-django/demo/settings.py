@@ -96,6 +96,9 @@ STATICFILES_DIRS = [
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Default timeout for database operations (new in Django 5.1)
+DATABASE_TIMEOUT = 30
+
 # Logging configuration with Logtail
 LOGGING = {
     'version': 1,

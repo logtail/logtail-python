@@ -9,6 +9,7 @@ This is a sample Django application that demonstrates how to integrate Logtail f
 - Custom context and extra data in logs
 - Exception handling and logging
 - Docker support
+- Django 5.1.3 with Python 3.12
 
 ## Prerequisites
 
@@ -70,4 +71,4 @@ example-django/
 
 ## Logging Configuration
 
-The logging configuration can be found in `settings.py`. It sets up both console and Logtail handlers with a verbose formatter. 
+The logging configuration can be found in `settings.py`. It sets up both console and Logtail handlers with a verbose formatter.

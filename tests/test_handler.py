@@ -20,6 +20,16 @@ class TestLogtailHandler(unittest.TestCase):
         handler = LogtailHandler(source_token=self.source_token, host=self.host)
         self.assertEqual(handler.uploader.source_token, self.source_token)
         self.assertEqual(handler.uploader.host, "https://" + self.host)
+        
+    @patch('logtail.handler.FlushWorker')
+    def test_handler_passes_timeout_to_uploader(self, MockWorker):
+        # Test default timeout
+        handler = LogtailHandler(source_token=self.source_token, host=self.host)
+        self.assertEqual(handler.uploader.timeout, 30)
+        
+        # Test custom timeout
+        handler = LogtailHandler(source_token=self.source_token, host=self.host, timeout=10)
+        self.assertEqual(handler.uploader.timeout, 10)
 
     @patch('logtail.handler.FlushWorker')
     def test_handler_creates_pipe_from_args(self, MockWorker):

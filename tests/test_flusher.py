@@ -20,10 +20,11 @@ class TestFlushWorker(unittest.TestCase):
     buffer_capacity = 5
     flush_interval = 2
     check_interval = 0.01
+    timeout = 0.1
 
     def _setup_worker(self, uploader=None):
         pipe = queue.Queue(maxsize=self.buffer_capacity)
-        uploader = uploader or Uploader(self.source_token, self.host)
+        uploader = uploader or Uploader(self.source_token, self.host, self.timeout)
         fw = FlushWorker(uploader, pipe, self.buffer_capacity, self.flush_interval, self.check_interval)
         return pipe, uploader, fw
 

@@ -16,6 +16,7 @@ DEFAULT_CHECK_INTERVAL = 0.1
 DEFAULT_RAISE_EXCEPTIONS = False
 DEFAULT_DROP_EXTRA_EVENTS = True
 DEFAULT_INCLUDE_EXTRA_ATTRIBUTES = True
+DEFAULT_TIMEOUT = 30
 
 
 class LogtailHandler(logging.Handler):
@@ -29,6 +30,7 @@ class LogtailHandler(logging.Handler):
                  drop_extra_events=DEFAULT_DROP_EXTRA_EVENTS,
                  include_extra_attributes=DEFAULT_INCLUDE_EXTRA_ATTRIBUTES,
                  context=DEFAULT_CONTEXT,
+                 timeout=DEFAULT_TIMEOUT,
                  level=logging.NOTSET):
         super(LogtailHandler, self).__init__(level=level)
         self.source_token = source_token
@@ -38,7 +40,7 @@ class LogtailHandler(logging.Handler):
             self.host = "https://" + host
         self.context = context
         self.pipe = queue.Queue(maxsize=buffer_capacity)
-        self.uploader = Uploader(self.source_token, self.host)
+        self.uploader = Uploader(self.source_token, self.host, timeout)
         self.drop_extra_events = drop_extra_events
         self.include_extra_attributes = include_extra_attributes
         self.buffer_capacity = buffer_capacity

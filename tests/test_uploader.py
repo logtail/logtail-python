@@ -16,7 +16,7 @@ class TestUploader(unittest.TestCase):
 
     @patch('logtail.uploader.requests.Session.post')
     def test_call(self, post):
-        def mock_post(endpoint, data=None, headers=None):
+        def mock_post(endpoint, data=None, headers=None, timeout=None):
             # Check that the data is sent to ther correct endpoint
             self.assertEqual(endpoint, self.host)
             # Check the content-type
@@ -25,6 +25,8 @@ class TestUploader(unittest.TestCase):
             self.assertEqual('application/msgpack', headers.get('Content-Type'))
             # Check the content was msgpacked correctly
             self.assertEqual(msgpack.unpackb(data, raw=False), self.frame)
+            # Check that timeout is passed to the request
+            self.assertEqual(timeout, 30)
 
         post.side_effect = mock_post
         u = Uploader(self.source_token, self.host)

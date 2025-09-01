@@ -13,6 +13,7 @@ class TestUploader(unittest.TestCase):
     host = 'https://in.logtail.com'
     source_token = 'dummy_source_token'
     frame = [1, 2, 3]
+    timeout = 30
 
     @patch('logtail.uploader.requests.Session.post')
     def test_call(self, post):
@@ -29,7 +30,7 @@ class TestUploader(unittest.TestCase):
             self.assertEqual(timeout, 30)
 
         post.side_effect = mock_post
-        u = Uploader(self.source_token, self.host)
+        u = Uploader(self.source_token, self.host, self.timeout)
         u(self.frame)
 
         self.assertTrue(post.called)

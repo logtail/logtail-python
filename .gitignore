@@ -5,6 +5,7 @@ __pycache__
 htmlcov
 .coverage
 .tox
+.idea
 *.egg-info
 build/*
 dist/*

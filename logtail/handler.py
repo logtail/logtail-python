@@ -2,6 +2,7 @@
 from __future__ import print_function, unicode_literals
 import logging
 import json
+import os
 
 from .compat import queue
 from .helpers import DEFAULT_CONTEXT
@@ -17,6 +18,23 @@ DEFAULT_RAISE_EXCEPTIONS = False
 DEFAULT_DROP_EXTRA_EVENTS = True
 DEFAULT_INCLUDE_EXTRA_ATTRIBUTES = True
 DEFAULT_TIMEOUT = 30
+DEFAULT_FLUSH_TIMEOUT = 30
+
+
+# urllib3 emits per-request DEBUG logs from inside its connection pool.
+# The FlushWorker uses requests/urllib3 to POST to BetterStack — so any
+# debug() call from urllib3 happens on the FlushWorker thread. When
+# logging.shutdown() / logging.config.dictConfig() runs (e.g. triggered
+# at import time by libraries like pymilvus), the calling thread holds
+# logging._lock while iterating handlers and invoking flush(); the
+# FlushWorker's debug() call would need the same lock and the two threads
+# deadlock. Quieting urllib3 to WARNING keeps the debug() calls cheap
+# no-ops and avoids the lock contention entirely. Set
+# LOGTAIL_KEEP_URLLIB3_LOGS=1 to opt out.
+if os.getenv('LOGTAIL_KEEP_URLLIB3_LOGS', '').lower() not in ('1', 'true', 'yes'):
+    _urllib3_logger = logging.getLogger('urllib3')
+    if _urllib3_logger.level == logging.NOTSET or _urllib3_logger.level < logging.WARNING:
+        _urllib3_logger.setLevel(logging.WARNING)
 
 
 class LogtailHandler(logging.Handler):
@@ -31,6 +49,7 @@ class LogtailHandler(logging.Handler):
                  include_extra_attributes=DEFAULT_INCLUDE_EXTRA_ATTRIBUTES,
                  context=DEFAULT_CONTEXT,
                  timeout=DEFAULT_TIMEOUT,
+                 flush_timeout=DEFAULT_FLUSH_TIMEOUT,
                  level=logging.NOTSET):
         super(LogtailHandler, self).__init__(level=level)
         self.source_token = source_token
@@ -47,6 +66,7 @@ class LogtailHandler(logging.Handler):
         self.flush_interval = flush_interval
         self.check_interval = check_interval
         self.raise_exceptions = raise_exceptions
+        self.flush_timeout = flush_timeout
         self.dropcount = 0
         # Do not initialize the flush thread yet because it causes issues on Render.
         self.flush_thread = None
@@ -83,4 +103,4 @@ class LogtailHandler(logging.Handler):
 
     def flush(self):
         if self.flush_thread and self.flush_thread.is_alive():
-             self.flush_thread.flush()
+             self.flush_thread.flush(timeout=self.flush_timeout)

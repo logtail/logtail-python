@@ -3,13 +3,17 @@ name: tests
 on:
   - push
   - pull_request
+  - workflow_dispatch
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     strategy:
+      fail-fast: false
       matrix:
-        python-version: ['3.7', '3.8', '3.9', '3.10', '3.11']
+        # '3.x' always resolves to the latest stable Python 3 release, so new
+        # minor versions get exercised as soon as they ship.
+        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14', '3.x']
 
     steps:
     - uses: actions/checkout@v1

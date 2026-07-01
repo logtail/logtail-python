@@ -1,10 +1,10 @@
-# This is an example project of Logtail python integration
-# This project showcases how to use Logtail in your python projects
+# This is an example project of Better Stack python integration
+# This project showcases how to use Better Stack in your python projects
 # For more information please visit https://github.com/logtail/logtail-python
 
 # SETUP
 
-# Import Logtail client library and default logging library
+# Import Better Stack client library and default logging library
 from logtail import LogtailHandler
 import logging
 import sys
@@ -27,10 +27,10 @@ logger.addHandler(handler) # assign handler to logger
 # Following code showcases logger usage
 
 # Send debug log using the debug() method
-logger.debug('I am using Logtail!')
+logger.debug('I am using Better Stack!')
 
 # Send info level log about interesting events using the info() method
-logger.info('I love Logtail!')
+logger.info('I love Better Stack!')
 
 # Send warning level log about worrying events using the warning() method
 # You can also add custom structured information to the log by passing it as a second argument

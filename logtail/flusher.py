@@ -26,6 +26,16 @@ class FlushWorker(threading.Thread):
         while self.should_run:
             self.step()
 
+    def _is_parent_alive(self):
+        try:
+            return self.parent_thread.is_alive()
+        except RuntimeError:
+            # Starting with Python 3.14, calling is_alive() on an
+            # already-terminated thread raises a RuntimeError instead of
+            # returning False (see the parent thread being torn down during
+            # interpreter shutdown). Treat that as "no longer alive".
+            return False
+
     def step(self):
         last_flush = time.time()
         time_remaining = _initial_time_remaining(self.flush_interval)
@@ -34,7 +44,7 @@ class FlushWorker(threading.Thread):
 
         # If the parent thread has exited but there are still outstanding
         # events, attempt to send them before exiting.
-        shutdown = not self.parent_thread.is_alive()
+        shutdown = not self._is_parent_alive()
 
         # Fill phase: take events out of the queue and group them for sending.
         # Takes up to `buffer_capacity` events out of the queue and groups them
@@ -54,11 +64,11 @@ class FlushWorker(threading.Thread):
             except queue.Empty:
                 if shutdown or self._flushing:
                     break
-            shutdown = not self.parent_thread.is_alive()
+            shutdown = not self._is_parent_alive()
             time_remaining = _calculate_time_remaining(last_flush, self.flush_interval)
 
         # Send phase: takes the outstanding events (up to `buffer_capacity`
-        # count) and sends them to the Logtail endpoint all at once. If the
+        # count) and sends them to the Better Stack endpoint all at once. If the
         # request fails in a way that can be retried, it is retried with an
         # exponential backoff in between attempts.
         if frame:

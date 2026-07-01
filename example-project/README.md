@@ -39,10 +39,10 @@ In this section, we will take a look at actual logging as shown in the example p
 
 ## Setup
 
-First, we need to import the Logtail client library to our code. This can be done using the import keyword. We also need to import the default logging library.
+First, we need to import the Better Stack client library to our code. This can be done using the import keyword. We also need to import the default logging library.
 
 ```python
-# Import Logtail client library and default logging library
+# Import Better Stack client library and default logging library
 from logtail import LogtailHandler
 import logging
 ```
@@ -81,7 +81,7 @@ Code above will generate only one log because the debug level message has lowere
 
 ## Logging example
 
-The `logger` instance we created in the setup section is used to send log messages to Logtail. It provides 6 logging methods for the 6 default log levels. The log levels and their method are:
+The `logger` instance we created in the setup section is used to send log messages to Better Stack. It provides 6 logging methods for the 6 default log levels. The log levels and their method are:
 
 - **DEBUG** - Send debug messages using the `debug()` method
 - **INFO** - Send informative messages about the application progress using the `info()` method

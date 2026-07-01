@@ -1,7 +1,6 @@
 # coding: utf-8
 from __future__ import print_function, unicode_literals
 import mock
-import sys
 import time
 import threading
 import unittest
@@ -146,8 +145,39 @@ class TestFlushWorker(unittest.TestCase):
         self.assertEqual(self.upload_calls, 1)
         self.assertFalse(fw.should_run)
 
-    # test relies on overriding excepthook which is available from 3.8+
-    @unittest.skipIf(sys.version_info < (3, 8), "Test skipped because overriding excepthook is only available on Python 3.8+")
+    def test_is_parent_alive_handles_runtime_error(self):
+        # Starting with Python 3.14, is_alive() raises RuntimeError when
+        # called on an already-terminated thread instead of returning False.
+        # The worker must treat that as the parent no longer being alive.
+        _, _, fw = self._setup_worker()
+        fw.parent_thread = mock.MagicMock()
+        fw.parent_thread.is_alive.side_effect = RuntimeError('cannot join current thread')
+
+        self.assertFalse(fw._is_parent_alive())
+
+    def test_shutdown_condition_when_parent_is_alive_raises(self):
+        self.buffer_capacity = 10
+        num_items = 5
+        first_frame = list(range(self.buffer_capacity))
+        self.assertLess(num_items, self.buffer_capacity)
+
+        self.upload_calls = 0
+        def uploader(frame):
+            self.upload_calls += 1
+            self.assertEqual(frame, first_frame[:num_items])
+            return mock.MagicMock(status_code=202)
+
+        pipe, _, fw = self._setup_worker(uploader)
+        fw.parent_thread = mock.MagicMock()
+        fw.parent_thread.is_alive.side_effect = RuntimeError('cannot join current thread')
+
+        for i in range(num_items):
+            pipe.put(first_frame[i], block=False)
+
+        fw.step()
+        self.assertEqual(self.upload_calls, 1)
+        self.assertFalse(fw.should_run)
+
     def test_shutdown_dont_raise_exception_in_thread(self):
         original_excepthook = threading.excepthook
         threading.excepthook = mock.Mock()

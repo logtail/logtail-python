@@ -68,7 +68,7 @@ class FlushWorker(threading.Thread):
             time_remaining = _calculate_time_remaining(last_flush, self.flush_interval)
 
         # Send phase: takes the outstanding events (up to `buffer_capacity`
-        # count) and sends them to the Logtail endpoint all at once. If the
+        # count) and sends them to the Better Stack endpoint all at once. If the
         # request fails in a way that can be retried, it is retried with an
         # exponential backoff in between attempts.
         if frame:

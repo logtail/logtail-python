@@ -20,7 +20,7 @@ setup(
     packages=['logtail'],
     include_package_data=True,
     license='ISC',
-    description='Logtail.com client library',
+    description='Better Stack client library',
     long_description=long_description,
     long_description_content_type='text/markdown',
     url='https://github.com/logtail/logtail-python',

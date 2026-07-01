@@ -17,7 +17,7 @@ class TestLogtailLogEntry(unittest.TestCase):
         self.assertTrue(frame['dt'].endswith("+00:00"))
 
         # Sent date matches log record date
-        date_ref = datetime.datetime.utcfromtimestamp(log_record.created).replace(tzinfo=datetime.timezone.utc)
+        date_ref = datetime.datetime.fromtimestamp(log_record.created, datetime.timezone.utc)
         date_sent = datetime.datetime.fromisoformat(frame['dt'])
         self.assertEqual(date_ref, date_sent)
 

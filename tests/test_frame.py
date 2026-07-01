@@ -3,7 +3,6 @@
 from logtail.frame import create_frame
 from logtail.handler import LogtailHandler
 from logtail.helpers import LogtailContext
-from sys import version_info
 import datetime
 import unittest
 import logging
@@ -17,9 +16,6 @@ class TestLogtailLogEntry(unittest.TestCase):
         # ISO timestamp must end with timezone info
         self.assertTrue(frame['dt'].endswith("+00:00"))
 
-        # These tests require Python >= 3.7
-        if version_info.major == 2 or version_info.minor <= 6:
-            return
         # Sent date matches log record date
         date_ref = datetime.datetime.utcfromtimestamp(log_record.created).replace(tzinfo=datetime.timezone.utc)
         date_sent = datetime.datetime.fromisoformat(frame['dt'])

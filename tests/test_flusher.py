@@ -1,7 +1,6 @@
 # coding: utf-8
 from __future__ import print_function, unicode_literals
 import mock
-import sys
 import time
 import threading
 import unittest
@@ -179,8 +178,6 @@ class TestFlushWorker(unittest.TestCase):
         self.assertEqual(self.upload_calls, 1)
         self.assertFalse(fw.should_run)
 
-    # test relies on overriding excepthook which is available from 3.8+
-    @unittest.skipIf(sys.version_info < (3, 8), "Test skipped because overriding excepthook is only available on Python 3.8+")
     def test_shutdown_dont_raise_exception_in_thread(self):
         original_excepthook = threading.excepthook
         threading.excepthook = mock.Mock()

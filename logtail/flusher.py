@@ -87,11 +87,29 @@ class FlushWorker(threading.Thread):
         if shutdown and self.pipe.empty():
             self.should_run = False
 
-    def flush(self):
+    def flush(self, timeout=None):
+        """Block until the worker has drained the queue.
+
+        If ``timeout`` is given (in seconds), return after at most that much
+        wall time has elapsed even if the queue is still non-empty. Returns
+        ``True`` if the queue was drained, ``False`` if the timeout fired.
+
+        A bounded ``flush()`` is important during ``logging.shutdown()`` —
+        without it, a slow or unreachable upload endpoint blocks the entire
+        process indefinitely. It also limits the window in which a deadlock
+        with the global ``logging`` lock can persist (see ``handler.py`` for
+        the urllib3-debug background).
+        """
         self._flushing = True
-        while not self._clean or not self.pipe.empty():
-            time.sleep(self.check_interval)
-        self._flushing = False
+        try:
+            deadline = None if timeout is None else time.time() + timeout
+            while not self._clean or not self.pipe.empty():
+                if deadline is not None and time.time() >= deadline:
+                    return False
+                time.sleep(self.check_interval)
+            return True
+        finally:
+            self._flushing = False
 
 def _initial_time_remaining(flush_interval):
     return flush_interval

@@ -190,3 +190,33 @@ class TestFlushWorker(unittest.TestCase):
         self.assertFalse(threading.excepthook.called)
 
         threading.excepthook = original_excepthook
+
+    def test_flush_returns_immediately_on_empty_clean_queue(self):
+        _, _, fw = self._setup_worker()
+        # _clean defaults to True and pipe is empty — flush should return at once.
+        t1 = time.time()
+        result = fw.flush()
+        elapsed = time.time() - t1
+        self.assertTrue(result)
+        self.assertLess(elapsed, 0.1)
+
+    def test_flush_with_timeout_returns_false_when_queue_not_drained(self):
+        pipe, _, fw = self._setup_worker()
+        # Put an item in but never start the worker thread → queue stays full,
+        # so flush() will spin until the timeout fires.
+        pipe.put(object(), block=False)
+
+        t1 = time.time()
+        result = fw.flush(timeout=0.05)
+        elapsed = time.time() - t1
+
+        self.assertFalse(result)
+        # Bounded: should return shortly after the timeout, not block forever.
+        self.assertLess(elapsed, 1.0)
+        self.assertGreaterEqual(elapsed, 0.04)
+
+    def test_flush_clears_flushing_flag_even_on_timeout(self):
+        pipe, _, fw = self._setup_worker()
+        pipe.put(object(), block=False)
+        fw.flush(timeout=0.05)
+        self.assertFalse(fw._flushing)

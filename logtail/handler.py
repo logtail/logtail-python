@@ -6,7 +6,7 @@ import json
 from .compat import queue
 from .helpers import DEFAULT_CONTEXT
 from .flusher import FlushWorker
-from .uploader import Uploader
+from .uploader import Uploader, DEFAULT_TIMEOUT
 from .frame import create_frame
 
 DEFAULT_HOST = 'https://in.logs.betterstack.com'
@@ -31,13 +31,14 @@ class LogtailHandler(logging.Handler):
                  include_extra_attributes=DEFAULT_INCLUDE_EXTRA_ATTRIBUTES,
                  context=DEFAULT_CONTEXT,
                  static_props=DEFAULT_STATIC_PROPS,
+                 timeout=DEFAULT_TIMEOUT,
                  level=logging.NOTSET):
         super(LogtailHandler, self).__init__(level=level)
         self.source_token = source_token
         self.host = host
         self.context = context
         self.pipe = queue.Queue(maxsize=buffer_capacity)
-        self.uploader = Uploader(self.source_token, self.host)
+        self.uploader = Uploader(self.source_token, self.host, timeout=timeout)
         self.drop_extra_events = drop_extra_events
         self.include_extra_attributes = include_extra_attributes
         self.buffer_capacity = buffer_capacity

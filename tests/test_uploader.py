@@ -6,7 +6,7 @@ import unittest
 
 from unittest.mock import patch
 
-from logtail.uploader import Uploader
+from logtail.uploader import Uploader, DEFAULT_TIMEOUT
 
 
 class TestUploader(unittest.TestCase):
@@ -16,7 +16,7 @@ class TestUploader(unittest.TestCase):
 
     @patch('logtail.uploader.requests.Session.post')
     def test_call(self, post):
-        def mock_post(endpoint, data=None, headers=None):
+        def mock_post(endpoint, data=None, headers=None, timeout=None):
             # Check that the data is sent to ther correct endpoint
             self.assertEqual(endpoint, self.host)
             # Check the content-type
@@ -31,3 +31,27 @@ class TestUploader(unittest.TestCase):
         u(self.frame)
 
         self.assertTrue(post.called)
+
+    @patch('logtail.uploader.requests.Session.post')
+    def test_call_passes_a_timeout_by_default(self, post):
+        # A request.post() call with no timeout can hang indefinitely if the
+        # server never responds - this is what caused a hubspot-sync cron
+        # job to hang for hours in production, blocking every subsequent
+        # scheduled run behind its lock file. Guard against a regression
+        # back to an unbounded call.
+        u = Uploader(self.source_token, self.host)
+        u(self.frame)
+
+        self.assertTrue(post.called)
+        _, kwargs = post.call_args
+        self.assertIn('timeout', kwargs)
+        self.assertIsNotNone(kwargs['timeout'])
+        self.assertEqual(kwargs['timeout'], DEFAULT_TIMEOUT)
+
+    @patch('logtail.uploader.requests.Session.post')
+    def test_call_respects_custom_timeout(self, post):
+        u = Uploader(self.source_token, self.host, timeout=1)
+        u(self.frame)
+
+        _, kwargs = post.call_args
+        self.assertEqual(kwargs['timeout'], 1)

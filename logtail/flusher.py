@@ -93,6 +93,10 @@ class FlushWorker(threading.Thread):
             time.sleep(self.check_interval)
         self._flushing = False
 
+def in_flush_worker():
+    return isinstance(threading.current_thread(), FlushWorker)
+
+
 def _initial_time_remaining(flush_interval):
     return flush_interval
 

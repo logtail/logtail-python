@@ -5,7 +5,7 @@ import json
 
 from .compat import queue
 from .helpers import DEFAULT_CONTEXT
-from .flusher import FlushWorker
+from .flusher import FlushWorker, in_flush_worker
 from .uploader import Uploader
 from .frame import create_frame
 
@@ -66,6 +66,12 @@ class LogtailHandler(logging.Handler):
 
     def emit(self, record):
         try:
+            if in_flush_worker():
+                # The upload itself logs (urllib3 reports every request at DEBUG). Shipping
+                # those records would trigger another upload, which logs again, so a handler
+                # on a DEBUG root logger would keep sending forever and never drain at exit.
+                return
+
             self.ensure_flush_thread_alive()
 
             message = self.format(record)

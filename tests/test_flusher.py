@@ -4,13 +4,14 @@ import mock
 import time
 import threading
 import unittest
+import requests
 
 from unittest.mock import patch
 
 from logtail.compat import queue
 from logtail.flusher import RETRY_SCHEDULE
 from logtail.flusher import FlushWorker
-from logtail.uploader import Uploader
+from logtail.uploader import Fake500, Uploader
 
 
 class TestFlushWorker(unittest.TestCase):
@@ -190,3 +191,29 @@ class TestFlushWorker(unittest.TestCase):
         self.assertFalse(threading.excepthook.called)
 
         threading.excepthook = original_excepthook
+
+    @patch('logtail.flusher.time.sleep')
+    @patch('logtail.flusher.print', create=True)
+    def test_reports_exhausted_retries_on_a_real_500_response(self, mock_print, mock_sleep):
+        response = requests.Response()
+        response.status_code = 500
+        uploader = mock.MagicMock(return_value=response)
+        pipe, _, fw = self._setup_worker(uploader)
+        pipe.put('log', block=False)
+
+        fw.step()
+
+        self.assertEqual(uploader.call_count, 4)
+        mock_print.assert_called_once_with('Failed to send logs to Better Stack after 3 retries: HTTP 500')
+
+    @patch('logtail.flusher.time.sleep')
+    @patch('logtail.flusher.print', create=True)
+    def test_reports_exhausted_retries_on_a_request_exception(self, mock_print, mock_sleep):
+        uploader = mock.MagicMock(return_value=Fake500(requests.ConnectionError('connection refused')))
+        pipe, _, fw = self._setup_worker(uploader)
+        pipe.put('log', block=False)
+
+        fw.step()
+
+        self.assertEqual(uploader.call_count, 4)
+        mock_print.assert_called_once_with('Failed to send logs to Better Stack after 3 retries: connection refused')

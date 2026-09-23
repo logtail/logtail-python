@@ -277,6 +277,35 @@ class TestLogtailHandler(unittest.TestCase):
         self.assertEqual(log_entry['context']['data']['egg']['chicken']['egg'], "<omitted circular reference>")
         self.assertTrue(handler.pipe.empty())
 
+    def test_flush_returns_when_the_upload_itself_logs_to_the_handler(self):
+        logger = logging.getLogger(__name__)
+        logger.handlers = []
+        logger.setLevel(logging.DEBUG)
+        handler = LogtailHandler(source_token=self.source_token, flush_interval=0.01, check_interval=0.01)
+        uploads = []
+
+        def upload(frame):
+            uploads.append(frame)
+            # urllib3 logs every request it makes at DEBUG, and a handler on the
+            # root logger receives that record.
+            logger.debug('http://in.logs.betterstack.com:443 "POST / HTTP/1.1" 202 0')
+            return mock.MagicMock(status_code=202)
+
+        handler.uploader = upload
+        logger.addHandler(handler)
+        logger.info('hello')
+        self.addCleanup(self._stop_flush_worker, handler)
+
+        flushed = threading.Event()
+        threading.Thread(target=lambda: (handler.flush(), flushed.set()), daemon=True).start()
+
+        self.assertTrue(flushed.wait(2), 'flush() did not return')
+        self.assertEqual([f['message'] for frame in uploads for f in frame], ['hello'])
+
+    def _stop_flush_worker(self, handler):
+        handler.flush_thread.should_run = False
+        handler.flush_thread.join(1)
+
 
 class UnserializableObject(object):
     """ Because this is a custom class, it cannot be serialized into JSON. """

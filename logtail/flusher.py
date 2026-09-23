@@ -80,8 +80,10 @@ class FlushWorker(threading.Thread):
                 if delay is not None:
                     time.sleep(delay)
 
-            if response.status_code == 500 and getattr(response, "exception") != None:
-                print('Failed to send logs to Better Stack after {} retries: {}'.format(len(RETRY_SCHEDULE), response.exception))
+            if _should_retry(response.status_code):
+                # Only Fake500 carries the exception; a real 5xx response is reported by its status.
+                reason = getattr(response, 'exception', 'HTTP {}'.format(response.status_code))
+                print('Failed to send logs to Better Stack after {} retries: {}'.format(len(RETRY_SCHEDULE), reason))
 
         self._clean = True
         if shutdown and self.pipe.empty():

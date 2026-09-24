@@ -80,7 +80,12 @@ class FlushWorker(threading.Thread):
                 if delay is not None:
                     time.sleep(delay)
 
-            if response.status_code == 500 and getattr(response, "exception") != None:
+            # A network error surfaces as a Fake500 that carries an `exception`
+            # attribute; a genuine server HTTP 500 is a real `requests.Response`
+            # that has no such attribute. Use a default so the latter doesn't
+            # raise AttributeError here and kill the flush thread (dropping all
+            # subsequent logs for the life of the process).
+            if response.status_code == 500 and getattr(response, "exception", None) is not None:
                 print('Failed to send logs to Better Stack after {} retries: {}'.format(len(RETRY_SCHEDULE), response.exception))
 
         self._clean = True

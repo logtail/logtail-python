@@ -9,6 +9,14 @@ from .compat import queue
 RETRY_SCHEDULE = (1, 10, 60)  # seconds
 
 
+class TransportFrame(dict):
+    """A record logged by a flush worker itself, i.e. urllib3 describing our own upload.
+
+    It rides along with the next batch of regular records but never triggers an upload
+    on its own, since that upload would log again and the queue would never drain.
+    """
+
+
 class FlushWorker(threading.Thread):
     def __init__(self, upload, pipe, buffer_capacity, flush_interval, check_interval):
         threading.Thread.__init__(self)
@@ -71,7 +79,7 @@ class FlushWorker(threading.Thread):
         # count) and sends them to the Better Stack endpoint all at once. If the
         # request fails in a way that can be retried, it is retried with an
         # exponential backoff in between attempts.
-        if frame:
+        if frame and not all(isinstance(entry, TransportFrame) for entry in frame):
             response = None
             for delay in RETRY_SCHEDULE + (None, ):
                 response = self.upload(frame)

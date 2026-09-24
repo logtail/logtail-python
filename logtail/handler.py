@@ -5,7 +5,7 @@ import json
 
 from .compat import queue
 from .helpers import DEFAULT_CONTEXT
-from .flusher import FlushWorker, in_flush_worker
+from .flusher import FlushWorker, TransportFrame, in_flush_worker
 from .uploader import Uploader
 from .frame import create_frame
 
@@ -66,19 +66,17 @@ class LogtailHandler(logging.Handler):
 
     def emit(self, record):
         try:
-            if in_flush_worker():
-                # The upload itself logs (urllib3 reports every request at DEBUG). Shipping
-                # those records would trigger another upload, which logs again, so a handler
-                # on a DEBUG root logger would keep sending forever and never drain at exit.
-                return
-
             self.ensure_flush_thread_alive()
 
             message = self.format(record)
             frame = create_frame(record, message, self.context, include_extra_attributes=self.include_extra_attributes)
             serializable_frame = json.loads(json.dumps(frame, default=str))
+            transport = in_flush_worker()
+            if transport:
+                serializable_frame = TransportFrame(serializable_frame)
             try:
-                self.pipe.put(serializable_frame, block=(not self.drop_extra_events))
+                # The flush worker must never block on its own queue, so its records are dropped when full.
+                self.pipe.put(serializable_frame, block=(not self.drop_extra_events) and not transport)
             except queue.Full:
                 # Only raised when not blocking, which means that extra events
                 # should be dropped.

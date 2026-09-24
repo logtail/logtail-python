@@ -302,6 +302,60 @@ class TestLogtailHandler(unittest.TestCase):
         self.assertTrue(flushed.wait(2), 'flush() did not return')
         self.assertEqual([f['message'] for frame in uploads for f in frame], ['hello'])
 
+    def test_records_logged_by_the_upload_ride_along_with_the_next_batch(self):
+        logger = logging.getLogger(__name__)
+        logger.handlers = []
+        logger.setLevel(logging.DEBUG)
+        # Only a full buffer sends a batch within the test.
+        handler = LogtailHandler(source_token=self.source_token, buffer_capacity=2, flush_interval=1000, check_interval=0.01)
+        uploads = []
+
+        def upload(frame):
+            logger.debug('POST / 202')  # what urllib3 does, still inside the request
+            uploads.append([f['message'] for f in frame])
+            return mock.MagicMock(status_code=202)
+
+        handler.uploader = upload
+        logger.addHandler(handler)
+        self.addCleanup(self._stop_flush_worker, handler)
+
+        logger.info('hello')
+        logger.info('hello again')
+        self._wait_until(lambda: len(uploads) == 1)
+        logger.info('world')
+        self._wait_until(lambda: len(uploads) == 2)
+
+        self.assertEqual(uploads, [['hello', 'hello again'], ['POST / 202', 'world']])
+
+    def test_a_batch_of_only_the_uploads_own_records_is_dropped_not_sent(self):
+        logger = logging.getLogger(__name__)
+        logger.handlers = []
+        logger.setLevel(logging.DEBUG)
+        handler = LogtailHandler(source_token=self.source_token, flush_interval=0.01, check_interval=0.01)
+        uploads = []
+
+        def upload(frame):
+            logger.debug('POST / 202')
+            uploads.append([f['message'] for f in frame])
+            return mock.MagicMock(status_code=202)
+
+        handler.uploader = upload
+        logger.addHandler(handler)
+        self.addCleanup(self._stop_flush_worker, handler)
+
+        logger.info('hello')
+        self._wait_until(lambda: len(uploads) == 1)
+        time.sleep(0.1)  # several flush intervals, enough for the loop to show if it existed
+
+        self.assertEqual(uploads, [['hello']])
+        self.assertTrue(handler.pipe.empty())
+
+    def _wait_until(self, condition):
+        deadline = time.time() + 2
+        while not condition() and time.time() < deadline:
+            time.sleep(0.01)
+        self.assertTrue(condition())
+
     def _stop_flush_worker(self, handler):
         handler.flush_thread.should_run = False
         handler.flush_thread.join(1)

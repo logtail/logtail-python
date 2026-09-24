@@ -1,0 +1,219 @@
+# Publishes logtail-python to PyPI from GitHub Actions, the way logtail-js releases the @logtail/*
+# packages. The publish job runs in the "pypi" environment, so its required reviewers are the
+# release gate.
+#
+# Authentication, either of:
+#   - The repository secret PYPI_TOKEN_PASSWORD holding a PyPI API token for the logtail-python
+#     project. The workflow uploads with it whenever the secret exists.
+#   - Trusted publishing (OIDC), used automatically once the secret is removed: on pypi.org open
+#     the logtail-python project → Publishing → add a GitHub publisher with owner "logtail",
+#     repository "logtail-python", workflow "release.yml" and environment "pypi". No token exists
+#     anywhere then, and PyPI attaches PEP 740 attestations to the uploaded files.
+#
+# One-time setup on GitHub: create the "pypi" environment with required reviewers and deployment
+# branches limited to master. A job that references a missing environment creates it WITHOUT
+# protection.
+#
+# Release: Actions → Release → Run workflow from master, pick patch or minor, approve the
+# environment prompt. The workflow bumps the version in setup.py and logtail/__init__.py, builds
+# and checks the sdist and the wheel, commits "vX.Y.Z", tags it, pushes both, uploads the two
+# files to PyPI and creates a GitHub release with auto-generated notes for the tag; edit the notes
+# afterwards if needed.
+#
+# Retry: if a release failed after the version commit was pushed, run "retry" right away from
+# master. It bumps nothing, rebuilds the tagged commit, uploads whatever PyPI is still missing and
+# creates the GitHub release if it is still missing. Running patch or minor again would release
+# the next version instead.
+#
+# Dry run: bumps in place without committing, builds and checks both files, and, when no token
+# secret is set, exchanges the workflow's OIDC token with PyPI to prove that the trusted publisher
+# matches this workflow. Nothing is pushed or uploaded. A dry run may be dispatched from any branch.
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: "patch or minor: bump, tag and publish. retry: finish a release that failed halfway."
+        type: choice
+        options: [patch, minor, retry]
+        required: true
+      dry_run:
+        description: "Dry run: bump and build, verify PyPI accepts this workflow, publish nothing"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Test
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install tox tox-gh-actions
+
+      - name: Test with tox
+        run: tox
+
+  build:
+    name: Bump and build
+    needs: verify
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write # pushes the version commit and tag
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    env:
+      RELEASE: ${{ inputs.release }}
+      DRY_RUN: ${{ inputs.dry_run }}
+
+    steps:
+      - name: Releases run from master only
+        if: ${{ !inputs.dry_run && github.ref != 'refs/heads/master' }}
+        run: |
+          echo "::error::Dispatch the release from master, not from $GITHUB_REF_NAME."
+          exit 1
+
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # the version check looks at the tags on HEAD
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.x'
+
+      - name: Bump version
+        id: version
+        run: |
+          python - <<'EOF'
+          import os, re, subprocess
+
+          init, setup = 'logtail/__init__.py', 'setup.py'
+          current = re.search(r"^__version__ = '(\d+\.\d+\.\d+)'$", open(init).read(), re.M).group(1)
+          assert "VERSION = '%s'" % current in open(setup).read(), 'setup.py and logtail/__init__.py disagree on the version'
+          tagged = 'v' + current in subprocess.check_output(['git', 'tag', '--points-at', 'HEAD'], text=True).split()
+
+          release, dry_run = os.environ['RELEASE'], os.environ['DRY_RUN'] == 'true'
+          if release == 'retry':
+              assert tagged, 'retry only finishes a release whose version commit v%s is HEAD' % current
+              version = current
+          else:
+              assert dry_run or not tagged, 'HEAD is already released as v%s, there is nothing new to release' % current
+              major, minor, patch = map(int, current.split('.'))
+              version = '%d.%d.0' % (major, minor + 1) if release == 'minor' else '%d.%d.%d' % (major, minor, patch + 1)
+              for path, line in ((init, "__version__ = '%s'"), (setup, "VERSION = '%s'")):
+                  text = open(path).read()
+                  open(path, 'w').write(text.replace(line % current, line % version, 1))
+
+          print('%s -> %s' % (current, version))
+          open(os.environ['GITHUB_OUTPUT'], 'a').write('version=%s\n' % version)
+          EOF
+
+      - name: Build
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          pip install build twine
+          python -m build
+          twine check dist/*
+          ls dist/logtail_python-$VERSION.tar.gz dist/logtail_python-$VERSION-*.whl
+          test "$(ls dist | wc -l)" -eq 2
+
+      - name: Commit and tag
+        if: ${{ !inputs.dry_run && inputs.release != 'retry' }}
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "v$VERSION"
+          git tag -a "v$VERSION" -m "v$VERSION"
+          git push origin master "v$VERSION"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  release:
+    name: Publish
+    needs: build
+    runs-on: ubuntu-24.04
+    environment: pypi
+    permissions:
+      contents: write # creates the GitHub release
+      id-token: write # OIDC token exchange with PyPI
+    env:
+      VERSION: ${{ needs.build.outputs.version }}
+
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+
+      - name: Dry run
+        if: ${{ inputs.dry_run }}
+        env:
+          PYPI_TOKEN: ${{ secrets.PYPI_TOKEN_PASSWORD }}
+        run: |
+          ls -l dist
+          if [ -n "$PYPI_TOKEN" ]; then
+            echo "PYPI_TOKEN_PASSWORD is set, so a release uploads with the token; nothing to verify without uploading."
+            exit 0
+          fi
+          python - <<'EOF'
+          import json, os, urllib.error, urllib.request
+
+          def call(url, data=None, headers={}):
+              with urllib.request.urlopen(urllib.request.Request(url, data=data, headers=headers)) as response:
+                  return json.load(response)
+
+          audience = call('https://pypi.org/_/oidc/audience')['audience']
+          token = call(os.environ['ACTIONS_ID_TOKEN_REQUEST_URL'] + '&audience=' + audience,
+                       headers={'Authorization': 'bearer ' + os.environ['ACTIONS_ID_TOKEN_REQUEST_TOKEN']})['value']
+          try:
+              # The minted upload token is short-lived and discarded here, only the exchange matters.
+              call('https://pypi.org/_/oidc/mint-token', data=json.dumps({'token': token}).encode(), headers={'Content-Type': 'application/json'})
+          except urllib.error.HTTPError as error:
+              raise SystemExit('PyPI refused the OIDC token, so no trusted publisher matches this workflow: ' + error.read().decode())
+          print('PyPI accepted the OIDC token: the trusted publisher matches this workflow.')
+          EOF
+
+      - name: Publish to PyPI
+        if: ${{ !inputs.dry_run }}
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          # Empty when the secret is absent, which makes the action use trusted publishing instead.
+          password: ${{ secrets.PYPI_TOKEN_PASSWORD }}
+          skip-existing: ${{ inputs.release == 'retry' }}
+
+      - name: Create GitHub release
+        if: ${{ !inputs.dry_run }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if gh release view "v$VERSION" > /dev/null 2>&1; then
+            echo "Release v$VERSION already exists."
+          else
+            # --verify-tag: only ever attach to the tag the build job pushed, never create one here.
+            gh release create "v$VERSION" --verify-tag --generate-notes
+          fi

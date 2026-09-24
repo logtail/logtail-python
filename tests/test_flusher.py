@@ -1,6 +1,7 @@
 # coding: utf-8
 from __future__ import print_function, unicode_literals
 import mock
+import requests
 import time
 import threading
 import unittest
@@ -122,6 +123,48 @@ class TestFlushWorker(unittest.TestCase):
         fw.step()
         self.assertEqual(self.uploader_calls, len(RETRY_SCHEDULE) + 1)
         self.assertEqual(self.sleep_calls, len(RETRY_SCHEDULE))
+
+    @patch('logtail.flusher.time.sleep')
+    def test_step_does_not_crash_on_real_server_500(self, _mock_sleep):
+        # Regression: a genuine server HTTP 500 returns a real requests.Response,
+        # which (unlike the network-error Fake500) has no `.exception` attribute.
+        # `getattr(response, "exception")` without a default raised AttributeError
+        # here, which propagates out of step()/run() and kills the flush thread —
+        # every subsequent log is then queued but never sent. (Note: MagicMock
+        # would auto-vivify `.exception` and hide the bug, so use a real Response.)
+        first_frame = list(range(self.buffer_capacity))
+
+        def uploader(frame):
+            resp = requests.models.Response()
+            resp.status_code = 500
+            return resp
+
+        pipe, _, fw = self._setup_worker(uploader)
+        for log in first_frame:
+            pipe.put(log, block=False)
+
+        fw.step()  # must not raise AttributeError
+
+        self.assertTrue(fw._clean)
+
+    @patch('logtail.flusher.time.sleep')
+    def test_step_still_logs_network_error_fake500(self, _mock_sleep):
+        # The network-error path (Fake500 carrying an exception) must still log.
+        from logtail.uploader import Fake500
+
+        first_frame = list(range(self.buffer_capacity))
+
+        def uploader(frame):
+            return Fake500(Exception('network is down'))
+
+        pipe, _, fw = self._setup_worker(uploader)
+        for log in first_frame:
+            pipe.put(log, block=False)
+
+        with patch('builtins.print') as mock_print:
+            fw.step()
+
+        mock_print.assert_called_once()
 
     def test_shutdown_condition_empties_queue_and_shuts_down(self):
         self.buffer_capacity = 10

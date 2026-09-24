@@ -1,6 +1,7 @@
 # coding: utf-8
 from __future__ import print_function, unicode_literals
 import mock
+import os
 import time
 import threading
 import unittest
@@ -276,6 +277,24 @@ class TestLogtailHandler(unittest.TestCase):
         self.assertEqual(log_entry['message'], 'hello')
         self.assertEqual(log_entry['context']['data']['egg']['chicken']['egg'], "<omitted circular reference>")
         self.assertTrue(handler.pipe.empty())
+
+    @patch('logtail.handler.FlushWorker')
+    def test_forked_child_starts_with_a_fresh_queue_thread_and_session(self, MockWorker):
+        handler = LogtailHandler(source_token=self.source_token)
+        logger = logging.getLogger(__name__)
+        logger.handlers = []
+        logger.addHandler(handler)
+        logger.critical('queued in the parent')
+        parent_session = handler.uploader.session
+
+        pid = os.fork()
+        if pid == 0:
+            fresh = handler.pipe.empty() and handler.flush_thread is None and handler.uploader.session is not parent_session
+            os._exit(0 if fresh else 1)
+        _, status = os.waitpid(pid, 0)
+
+        self.assertEqual(os.waitstatus_to_exitcode(status), 0)
+        self.assertEqual(handler.pipe.get(block=False)['message'], 'queued in the parent')
 
     def test_flush_returns_when_the_upload_itself_logs_to_the_handler(self):
         logger = logging.getLogger(__name__)

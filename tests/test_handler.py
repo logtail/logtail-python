@@ -285,11 +285,15 @@ class TestLogtailHandler(unittest.TestCase):
         logger.handlers = []
         logger.addHandler(handler)
         logger.critical('queued in the parent')
-        parent_session = handler.uploader.session
+        uploader = handler.uploader
+        parent_session = uploader.session
 
         pid = os.fork()
         if pid == 0:
-            fresh = handler.pipe.empty() and handler.flush_thread is None and handler.uploader.session is not parent_session
+            # The child gets its own session, but never resolves proxy settings again: on macOS
+            # that means SystemConfiguration, which refuses to run in a forked child.
+            fresh = (handler.pipe.empty() and handler.flush_thread is None and handler.uploader is uploader
+                     and uploader.session is not parent_session and uploader.session.trust_env is False)
             os._exit(0 if fresh else 1)
         _, status = os.waitpid(pid, 0)
 

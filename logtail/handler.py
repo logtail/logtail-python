@@ -100,7 +100,7 @@ class LogtailHandler(logging.Handler):
         # whose socket it shares with the parent, so it starts over with fresh ones.
         self.pipe = queue.Queue(maxsize=self.buffer_capacity)
         self.flush_thread = None
-        self.uploader = Uploader(self.source_token, self.host, self.uploader.timeout)
+        self.uploader.reset()
 
 
 def _reset_handlers_after_fork():

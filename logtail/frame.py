@@ -99,4 +99,9 @@ def _relative_to_main_module_if_possible(pathname: str) -> str:
     return _relative_to_main_module(pathname) if has_main_module else pathname
 
 def _relative_to_main_module(pathname: str) -> str:
-    return path.relpath(pathname, path.dirname(__main__.__file__))
+    try:
+        return path.relpath(pathname, path.dirname(__main__.__file__))
+    except ValueError:
+        # Windows has no relative path between drives, and a PyInstaller build unpacks the
+        # script to the system drive while the application may run from another one.
+        return pathname

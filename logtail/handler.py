@@ -19,6 +19,8 @@ DEFAULT_RAISE_EXCEPTIONS = False
 DEFAULT_DROP_EXTRA_EVENTS = True
 DEFAULT_INCLUDE_EXTRA_ATTRIBUTES = True
 DEFAULT_TIMEOUT = 30
+DEFAULT_FLUSH_TIMEOUT = 30
+
 
 _handlers = weakref.WeakSet()
 
@@ -35,6 +37,7 @@ class LogtailHandler(logging.Handler):
                  include_extra_attributes=DEFAULT_INCLUDE_EXTRA_ATTRIBUTES,
                  context=DEFAULT_CONTEXT,
                  timeout=DEFAULT_TIMEOUT,
+                 flush_timeout=DEFAULT_FLUSH_TIMEOUT,
                  level=logging.NOTSET):
         super(LogtailHandler, self).__init__(level=level)
         self.source_token = source_token
@@ -51,6 +54,7 @@ class LogtailHandler(logging.Handler):
         self.flush_interval = flush_interval
         self.check_interval = check_interval
         self.raise_exceptions = raise_exceptions
+        self.flush_timeout = flush_timeout
         self.dropcount = 0
         # Do not initialize the flush thread yet because it causes issues on Render.
         self.flush_thread = None
@@ -92,7 +96,8 @@ class LogtailHandler(logging.Handler):
 
     def flush(self):
         if self.flush_thread and self.flush_thread.is_alive():
-             self.flush_thread.flush()
+            if not self.flush_thread.flush(timeout=self.flush_timeout):
+                print('Gave up waiting for Better Stack uploads after {}s, logs are still buffered'.format(self.flush_timeout))
 
     def _reset_after_fork(self):
         # A forked child inherits the parent's queue with whatever was still buffered in it,

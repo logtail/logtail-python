@@ -1,12 +1,14 @@
 # coding: utf-8
 from __future__ import print_function, unicode_literals
+from types import TracebackType
+from typing import Any, Optional
 
 
 class LogtailContext(object):
-    def __init__(self):
-        self.extras = []
+    def __init__(self) -> None:
+        self.extras: list[dict[str, dict[str, Any]]] = []
 
-    def context(self, *args, **kwargs):
+    def context(self, *args: Any, **kwargs: dict[str, Any]) -> 'LogtailContext':
         if args:
             raise ValueError(
                 'All contexts must be passed by name as keyword arguments'
@@ -19,23 +21,21 @@ class LogtailContext(object):
         self.extras.append(kwargs)
         return self
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, *args: Any, **kwargs: dict[str, Any]) -> 'LogtailContext':
         return self.context(*args, **kwargs)
 
-    def __enter__(self):
+    def __enter__(self) -> 'LogtailContext':
         return self
 
-    def __exit__(self, type_, value, traceback):
-        if type_ is not None:
-            return False
-        self.extras.pop()
-        return self
+    def __exit__(self, type_: Optional[type[BaseException]], value: Optional[BaseException], traceback: Optional[TracebackType]) -> None:
+        if type_ is None:
+            self.extras.pop()
 
-    def exists(self):
+    def exists(self) -> bool:
         return bool(self.extras)
 
-    def collapse(self):
-        x = {}
+    def collapse(self) -> dict[str, dict[str, Any]]:
+        x: dict[str, dict[str, Any]] = {}
         for contexts in self.extras:
             for name, data in contexts.items():
                 x.setdefault(name, {}).update(data)

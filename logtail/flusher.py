@@ -3,13 +3,14 @@ from __future__ import print_function, unicode_literals
 
 import threading
 import time
+from typing import Any, Callable, Optional
 
 from .compat import queue
 
 RETRY_SCHEDULE = (1, 10, 60)  # seconds
 
 
-class TransportFrame(dict):
+class TransportFrame(dict[str, Any]):
     """A record logged by a flush worker itself, i.e. urllib3 describing our own upload.
 
     It rides along with the next batch of regular records but never triggers an upload
@@ -18,7 +19,7 @@ class TransportFrame(dict):
 
 
 class FlushWorker(threading.Thread):
-    def __init__(self, upload, pipe, buffer_capacity, flush_interval, check_interval):
+    def __init__(self, upload: Callable[[list[Any]], Any], pipe: 'queue.Queue[Any]', buffer_capacity: int, flush_interval: float, check_interval: float) -> None:
         threading.Thread.__init__(self)
         self.parent_thread = threading.current_thread()
         self.upload = upload
@@ -30,11 +31,11 @@ class FlushWorker(threading.Thread):
         self._flushing = False
         self._clean = True
 
-    def run(self):
+    def run(self) -> None:
         while self.should_run:
             self.step()
 
-    def _is_parent_alive(self):
+    def _is_parent_alive(self) -> bool:
         try:
             return self.parent_thread.is_alive()
         except RuntimeError:
@@ -44,10 +45,10 @@ class FlushWorker(threading.Thread):
             # interpreter shutdown). Treat that as "no longer alive".
             return False
 
-    def step(self):
+    def step(self) -> None:
         last_flush = time.time()
         time_remaining = _initial_time_remaining(self.flush_interval)
-        frame = []
+        frame: list[Any] = []
         self._clean = True
 
         # If the parent thread has exited but there are still outstanding
@@ -80,7 +81,7 @@ class FlushWorker(threading.Thread):
         # request fails in a way that can be retried, it is retried with an
         # exponential backoff in between attempts.
         if frame and not all(isinstance(entry, TransportFrame) for entry in frame):
-            response = None
+            response: Any = None
             for delay in RETRY_SCHEDULE + (None, ):
                 response = self.upload(frame)
                 if not _should_retry(response.status_code):
@@ -100,7 +101,7 @@ class FlushWorker(threading.Thread):
         if shutdown and self.pipe.empty():
             self.should_run = False
 
-    def flush(self, timeout=None):
+    def flush(self, timeout: Optional[float] = None) -> bool:
         """Block until the worker has drained the queue.
 
         If ``timeout`` is given (in seconds), return after at most that much
@@ -125,19 +126,19 @@ class FlushWorker(threading.Thread):
         finally:
             self._flushing = False
 
-def in_flush_worker():
+def in_flush_worker() -> bool:
     return isinstance(threading.current_thread(), FlushWorker)
 
 
-def _initial_time_remaining(flush_interval):
+def _initial_time_remaining(flush_interval: float) -> float:
     return flush_interval
 
 
-def _calculate_time_remaining(last_flush, flush_interval):
+def _calculate_time_remaining(last_flush: float, flush_interval: float) -> float:
     elapsed = time.time() - last_flush
     time_remaining = max(flush_interval - elapsed, 0)
     return time_remaining
 
 
-def _should_retry(status_code):
+def _should_retry(status_code: int) -> bool:
     return 500 <= status_code < 600

@@ -16,7 +16,7 @@ class Worker(rq.Worker):
     in django-rq.
     """
 
-    def perform_job(self, job, queue):
+    def perform_job(self, job: rq.job.Job, queue: rq.Queue) -> bool:
         try:
             return super(Worker, self).perform_job(job, queue)
         finally:
@@ -24,6 +24,6 @@ class Worker(rq.Worker):
                 handler.flush()
 
 
-def _logtail_handlers():
+def _logtail_handlers() -> set[LogtailHandler]:
     loggers = [logging.getLogger()] + [logger for logger in logging.Logger.manager.loggerDict.values() if isinstance(logger, logging.Logger)]
     return {handler for logger in loggers for handler in logger.handlers if isinstance(handler, LogtailHandler)}

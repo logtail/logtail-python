@@ -28,8 +28,7 @@ class LogtailContext(object):
         return self
 
     def __exit__(self, type_: Optional[type[BaseException]], value: Optional[BaseException], traceback: Optional[TracebackType]) -> None:
-        if type_ is None:
-            self.extras.pop()
+        self.extras.pop()
 
     def exists(self) -> bool:
         return bool(self.extras)

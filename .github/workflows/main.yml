@@ -44,3 +44,6 @@ jobs:
         pip install -r requirements.txt -r test-requirements.txt
     - name: Type-check with mypy
       run: mypy
+    - name: Type-check the public API as a strict consumer
+      # Errors inside logtail itself stay silent, as they are for an installed package.
+      run: mypy --strict --follow-imports=silent tests/typecheck

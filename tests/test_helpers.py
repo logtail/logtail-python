@@ -33,6 +33,15 @@ class TestLogtailContext(unittest.TestCase):
             with c(user={'name': 'a'}):
                 raise ValueError('should be thrown')
 
+    def test_exception_leaves_the_context(self):
+        c = LogtailContext()
+        with c(user={'name': 'a'}):
+            with self.assertRaises(ValueError):
+                with c(request={'id': 'r'}):
+                    raise ValueError('leaves the inner block')
+            self.assertEqual(c.collapse(), {'user': {'name': 'a'}})
+        self.assertFalse(c.exists())
+
     def test_nested_collapse(self):
         c = LogtailContext()
         self.assertEqual(c.collapse(), {})

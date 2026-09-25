@@ -95,9 +95,16 @@ class LogtailHandler(logging.Handler):
                 raise e
 
     def flush(self):
-        if self.flush_thread and self.flush_thread.is_alive():
-            if not self.flush_thread.flush(timeout=self.flush_timeout):
-                print('Gave up waiting for Better Stack uploads after {}s, logs are still buffered'.format(self.flush_timeout))
+        if not (self.flush_thread and self.flush_thread.is_alive()):
+            return
+        if logging._lock._is_owned():
+            # logging.config.dictConfig() flushes the handlers it replaces while holding the global
+            # logging lock, and the worker's upload needs that lock whenever urllib3's logger has a
+            # level-cache miss, so waiting here could only deadlock. Nothing is lost: the worker
+            # keeps running and sends what is queued as soon as the lock is released.
+            return
+        if not self.flush_thread.flush(timeout=self.flush_timeout):
+            print('Gave up waiting for Better Stack uploads after {}s, logs are still buffered'.format(self.flush_timeout))
 
     def _reset_after_fork(self):
         # A forked child inherits the parent's queue with whatever was still buffered in it,

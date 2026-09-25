@@ -3,7 +3,7 @@ import os
 from setuptools import setup
 
 
-VERSION = '0.4.1'
+VERSION = '0.4.2'
 ROOT_DIR = os.path.dirname(__file__)
 
 REQUIREMENTS = [
@@ -41,6 +41,7 @@ setup(
           'Programming Language :: Python :: 3.12',
           'Programming Language :: Python :: 3.13',
           'Programming Language :: Python :: 3.14',
+          'Programming Language :: Python :: 3.15',
           'Programming Language :: Python',
           'Topic :: Software Development :: Libraries :: Python Modules',
     ],

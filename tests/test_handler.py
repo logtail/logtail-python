@@ -27,10 +27,48 @@ class TestLogtailHandler(unittest.TestCase):
         # Test default timeout
         handler = LogtailHandler(source_token=self.source_token, host=self.host)
         self.assertEqual(handler.uploader.timeout, 30)
-        
+
         # Test custom timeout
         handler = LogtailHandler(source_token=self.source_token, host=self.host, timeout=10)
         self.assertEqual(handler.uploader.timeout, 10)
+
+    @patch('logtail.handler.FlushWorker')
+    def test_handler_stores_flush_timeout(self, MockWorker):
+        # Default
+        handler = LogtailHandler(source_token=self.source_token, host=self.host)
+        self.assertEqual(handler.flush_timeout, 30)
+        # Custom
+        handler = LogtailHandler(source_token=self.source_token, host=self.host, flush_timeout=2)
+        self.assertEqual(handler.flush_timeout, 2)
+        # Explicit None disables the timeout (legacy unbounded wait)
+        handler = LogtailHandler(source_token=self.source_token, host=self.host, flush_timeout=None)
+        self.assertIsNone(handler.flush_timeout)
+
+    @patch('logtail.handler.FlushWorker')
+    def test_handler_passes_flush_timeout_to_worker(self, MockWorker):
+        handler = LogtailHandler(source_token=self.source_token, host=self.host, flush_timeout=7)
+        # Trigger flush_thread creation by emitting once.
+        logger = logging.getLogger(__name__)
+        logger.handlers = []
+        logger.addHandler(handler)
+        logger.critical('hello')
+        # The mocked FlushWorker is alive by default; flush() forwards timeout.
+        handler.flush()
+        handler.flush_thread.flush.assert_called_with(timeout=7)
+
+    @patch('logtail.handler.print', create=True)
+    @patch('logtail.handler.FlushWorker')
+    def test_flush_reports_giving_up(self, MockWorker, mock_print):
+        handler = LogtailHandler(source_token=self.source_token, host=self.host, flush_timeout=3)
+        logger = logging.getLogger(__name__)
+        logger.handlers = []
+        logger.addHandler(handler)
+        logger.critical('hello')
+        handler.flush_thread.flush.return_value = False
+
+        handler.flush()
+
+        mock_print.assert_called_once_with('Gave up waiting for Better Stack uploads after 3s, logs are still buffered')
 
     @patch('logtail.handler.FlushWorker')
     def test_handler_creates_pipe_from_args(self, MockWorker):
@@ -285,11 +323,15 @@ class TestLogtailHandler(unittest.TestCase):
         logger.handlers = []
         logger.addHandler(handler)
         logger.critical('queued in the parent')
-        parent_session = handler.uploader.session
+        uploader = handler.uploader
+        parent_session = uploader.session
 
         pid = os.fork()
         if pid == 0:
-            fresh = handler.pipe.empty() and handler.flush_thread is None and handler.uploader.session is not parent_session
+            # The child gets its own session, but never resolves proxy settings again: on macOS
+            # that means SystemConfiguration, which refuses to run in a forked child.
+            fresh = (handler.pipe.empty() and handler.flush_thread is None and handler.uploader is uploader
+                     and uploader.session is not parent_session and uploader.session.trust_env is False)
             os._exit(0 if fresh else 1)
         _, status = os.waitpid(pid, 0)
 

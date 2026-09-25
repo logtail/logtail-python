@@ -34,3 +34,33 @@ class TestUploader(unittest.TestCase):
         u(self.frame)
 
         self.assertTrue(post.called)
+
+    @patch('logtail.uploader.requests.utils.get_environ_proxies', return_value={'https': 'http://proxy.internal:3128'})
+    def test_resolves_proxy_settings_once_instead_of_on_every_request(self, get_environ_proxies):
+        u = Uploader(self.source_token, self.host, self.timeout)
+
+        with patch('logtail.uploader.requests.Session.post'):
+            u(self.frame)
+            u(self.frame)
+
+        get_environ_proxies.assert_called_once_with(self.host)
+        self.assertEqual(u.session.proxies, {'https': 'http://proxy.internal:3128'})
+        self.assertFalse(u.session.trust_env)
+
+    @patch.dict('os.environ', {'REQUESTS_CA_BUNDLE': '/etc/ssl/corporate-ca.pem'})
+    def test_uses_the_ca_bundle_from_the_environment(self):
+        u = Uploader(self.source_token, self.host, self.timeout)
+
+        self.assertEqual(u.session.verify, '/etc/ssl/corporate-ca.pem')
+
+    @patch('logtail.uploader.requests.utils.get_environ_proxies', return_value={'https': 'http://proxy.internal:3128'})
+    def test_reset_replaces_the_session_but_keeps_the_resolved_settings(self, get_environ_proxies):
+        u = Uploader(self.source_token, self.host, self.timeout)
+        session = u.session
+
+        u.reset()
+
+        self.assertIsNot(u.session, session)
+        self.assertEqual(u.session.proxies, {'https': 'http://proxy.internal:3128'})
+        self.assertFalse(u.session.trust_env)
+        get_environ_proxies.assert_called_once_with(self.host)

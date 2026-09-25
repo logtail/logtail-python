@@ -20,6 +20,8 @@ DEFAULT_RAISE_EXCEPTIONS = False
 DEFAULT_DROP_EXTRA_EVENTS = True
 DEFAULT_INCLUDE_EXTRA_ATTRIBUTES = True
 DEFAULT_TIMEOUT = 30
+DEFAULT_FLUSH_TIMEOUT = 30
+
 
 _handlers: 'weakref.WeakSet[LogtailHandler]' = weakref.WeakSet()
 
@@ -36,6 +38,7 @@ class LogtailHandler(logging.Handler):
                  include_extra_attributes: bool = DEFAULT_INCLUDE_EXTRA_ATTRIBUTES,
                  context: LogtailContext = DEFAULT_CONTEXT,
                  timeout: float = DEFAULT_TIMEOUT,
+                 flush_timeout: Optional[float] = DEFAULT_FLUSH_TIMEOUT,
                  level: int = logging.NOTSET) -> None:
         super(LogtailHandler, self).__init__(level=level)
         self.source_token = source_token
@@ -52,6 +55,7 @@ class LogtailHandler(logging.Handler):
         self.flush_interval = flush_interval
         self.check_interval = check_interval
         self.raise_exceptions = raise_exceptions
+        self.flush_timeout = flush_timeout
         self.dropcount = 0
         # Do not initialize the flush thread yet because it causes issues on Render.
         self.flush_thread: Optional[FlushWorker] = None
@@ -93,7 +97,8 @@ class LogtailHandler(logging.Handler):
 
     def flush(self) -> None:
         if self.flush_thread and self.flush_thread.is_alive():
-             self.flush_thread.flush()
+            if not self.flush_thread.flush(timeout=self.flush_timeout):
+                print('Gave up waiting for Better Stack uploads after {}s, logs are still buffered'.format(self.flush_timeout))
 
     def _reset_after_fork(self) -> None:
         # A forked child inherits the parent's queue with whatever was still buffered in it,
@@ -101,7 +106,7 @@ class LogtailHandler(logging.Handler):
         # whose socket it shares with the parent, so it starts over with fresh ones.
         self.pipe = queue.Queue(maxsize=self.buffer_capacity)
         self.flush_thread = None
-        self.uploader = Uploader(self.source_token, self.host, self.uploader.timeout)
+        self.uploader.reset()
 
 
 def _reset_handlers_after_fork() -> None:

@@ -3,7 +3,7 @@ from __future__ import print_function, unicode_literals
 
 import threading
 import time
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 from .compat import queue
 
@@ -101,11 +101,30 @@ class FlushWorker(threading.Thread):
         if shutdown and self.pipe.empty():
             self.should_run = False
 
-    def flush(self) -> None:
+    def flush(self, timeout: Optional[float] = None) -> bool:
+        """Block until the worker has drained the queue.
+
+        If ``timeout`` is given (in seconds), return after at most that much
+        wall time has elapsed even if the queue is still non-empty. Returns
+        ``True`` if the queue was drained, ``False`` if the timeout fired.
+
+        The bound matters when the caller holds the global logging lock, as
+        ``logging.config.dictConfig()`` does while it flushes and closes the
+        handlers it replaces: if this worker is inside an upload whose urllib3
+        ``debug()`` call needs that same lock, an unbounded wait deadlocks the
+        process. It also keeps a slow or unreachable endpoint from stalling a
+        shutdown forever.
+        """
         self._flushing = True
-        while not self._clean or not self.pipe.empty():
-            time.sleep(self.check_interval)
-        self._flushing = False
+        try:
+            deadline = None if timeout is None else time.time() + timeout
+            while not self._clean or not self.pipe.empty():
+                if deadline is not None and time.time() >= deadline:
+                    return False
+                time.sleep(self.check_interval)
+            return True
+        finally:
+            self._flushing = False
 
 def in_flush_worker() -> bool:
     return isinstance(threading.current_thread(), FlushWorker)

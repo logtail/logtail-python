@@ -4,7 +4,7 @@ import logging
 import json
 import os
 import weakref
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 from .compat import queue
 from .helpers import DEFAULT_CONTEXT, LogtailContext
@@ -37,9 +37,9 @@ class LogtailHandler(logging.Handler):
                  drop_extra_events: bool = DEFAULT_DROP_EXTRA_EVENTS,
                  include_extra_attributes: bool = DEFAULT_INCLUDE_EXTRA_ATTRIBUTES,
                  context: LogtailContext = DEFAULT_CONTEXT,
-                 timeout: float = DEFAULT_TIMEOUT,
+                 timeout: Union[float, tuple[float, float], None] = DEFAULT_TIMEOUT,
                  flush_timeout: Optional[float] = DEFAULT_FLUSH_TIMEOUT,
-                 level: int = logging.NOTSET) -> None:
+                 level: Union[int, str] = logging.NOTSET) -> None:
         super(LogtailHandler, self).__init__(level=level)
         self.source_token = source_token
         if host.startswith('https://') or host.startswith('http://'):

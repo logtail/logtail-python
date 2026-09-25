@@ -12,7 +12,7 @@ class Fake500(object):
         self.exception = exception
 
 class Uploader(object):
-    def __init__(self, source_token: str, host: str, timeout: float) -> None:
+    def __init__(self, source_token: str, host: str, timeout: Union[float, tuple[float, float], None]) -> None:
         self.source_token = source_token
         self.host = host
         self.timeout = timeout

@@ -4,8 +4,11 @@ from logtail.frame import create_frame
 from logtail.handler import LogtailHandler
 from logtail.helpers import LogtailContext
 import datetime
+import ntpath
 import unittest
 import logging
+
+from unittest.mock import patch
 
 class TestLogtailLogEntry(unittest.TestCase):
     def test_create_frame_happy_path(self):
@@ -36,3 +39,15 @@ class TestLogtailLogEntry(unittest.TestCase):
 
         frame = create_frame(log_record, log_record.getMessage(), LogtailContext(), include_extra_attributes=True)
         self.assertIn('non_dict_key', frame)
+
+    @patch('logtail.frame.path', ntpath)
+    @patch('logtail.frame.__main__')
+    def test_create_frame_keeps_the_absolute_path_when_the_file_is_on_another_drive(self, main):
+        # PyInstaller unpacks the script to the system drive while the application's files stay
+        # on the drive it was started from, and Windows has no relative path between drives.
+        main.__file__ = 'C:\\Users\\zi\\AppData\\Local\\Temp\\_MEI61722\\main.py'
+        log_record = logging.LogRecord("logtail-test", 20, 'D:\\workspace\\app\\main.py', 10, "Some log message", [], None)
+
+        frame = create_frame(log_record, log_record.getMessage(), LogtailContext())
+
+        self.assertEqual(frame['context']['runtime']['file'], 'D:\\workspace\\app\\main.py')

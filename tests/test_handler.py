@@ -411,6 +411,35 @@ class TestLogtailHandler(unittest.TestCase):
         self.assertEqual(uploads, [['hello']])
         self.assertTrue(handler.pipe.empty())
 
+    def test_flush_does_not_wait_while_the_caller_holds_the_logging_lock(self):
+        # logging.config.dictConfig() flushes the handlers it replaces while holding the global
+        # logging lock, and the worker's upload needs that lock whenever urllib3's logger has a
+        # level-cache miss, so waiting for the worker there can only deadlock.
+        logger = logging.getLogger(__name__)
+        logger.handlers = []
+        logger.setLevel(logging.INFO)
+        handler = LogtailHandler(source_token=self.source_token, flush_interval=0.01, check_interval=0.01, flush_timeout=2)
+        uploads = []
+        in_upload = threading.Event()
+
+        def upload(frame):
+            in_upload.set()
+            with logging._lock:  # what urllib3's isEnabledFor() does on a level-cache miss
+                uploads.append([f['message'] for f in frame])
+            return mock.MagicMock(status_code=202)
+
+        handler.uploader = upload
+        logger.addHandler(handler)
+        self.addCleanup(self._stop_flush_worker, handler)
+
+        with logging._lock:
+            logger.info('hello')
+            self.assertTrue(in_upload.wait(2))
+            started = time.time()
+            handler.flush()
+            self.assertLess(time.time() - started, 0.5, 'flush() waited for a worker that needs the lock we hold')
+        self._wait_until(lambda: uploads == [['hello']])
+
     def _wait_until(self, condition):
         deadline = time.time() + 2
         while not condition() and time.time() < deadline:

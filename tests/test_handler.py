@@ -56,6 +56,20 @@ class TestLogtailHandler(unittest.TestCase):
         handler.flush()
         handler.flush_thread.flush.assert_called_with(timeout=7)
 
+    @patch('logtail.handler.print', create=True)
+    @patch('logtail.handler.FlushWorker')
+    def test_flush_reports_giving_up(self, MockWorker, mock_print):
+        handler = LogtailHandler(source_token=self.source_token, host=self.host, flush_timeout=3)
+        logger = logging.getLogger(__name__)
+        logger.handlers = []
+        logger.addHandler(handler)
+        logger.critical('hello')
+        handler.flush_thread.flush.return_value = False
+
+        handler.flush()
+
+        mock_print.assert_called_once_with('Gave up waiting for Better Stack uploads after 3s, logs are still buffered')
+
     @patch('logtail.handler.FlushWorker')
     def test_handler_creates_pipe_from_args(self, MockWorker):
         buffer_capacity = 9

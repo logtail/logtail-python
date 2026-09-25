@@ -107,11 +107,12 @@ class FlushWorker(threading.Thread):
         wall time has elapsed even if the queue is still non-empty. Returns
         ``True`` if the queue was drained, ``False`` if the timeout fired.
 
-        A bounded ``flush()`` is important during ``logging.shutdown()`` —
-        without it, a slow or unreachable upload endpoint blocks the entire
-        process indefinitely. It also limits the window in which a deadlock
-        with the global ``logging`` lock can persist (see ``handler.py`` for
-        the urllib3-debug background).
+        The bound matters when the caller holds the global logging lock, as
+        ``logging.config.dictConfig()`` does while it flushes and closes the
+        handlers it replaces: if this worker is inside an upload whose urllib3
+        ``debug()`` call needs that same lock, an unbounded wait deadlocks the
+        process. It also keeps a slow or unreachable endpoint from stalling a
+        shutdown forever.
         """
         self._flushing = True
         try:

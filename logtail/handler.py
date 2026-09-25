@@ -22,21 +22,6 @@ DEFAULT_TIMEOUT = 30
 DEFAULT_FLUSH_TIMEOUT = 30
 
 
-# urllib3 emits per-request DEBUG logs from inside its connection pool.
-# The FlushWorker uses requests/urllib3 to POST to BetterStack — so any
-# debug() call from urllib3 happens on the FlushWorker thread. When
-# logging.shutdown() / logging.config.dictConfig() runs (e.g. triggered
-# at import time by libraries like pymilvus), the calling thread holds
-# logging._lock while iterating handlers and invoking flush(); the
-# FlushWorker's debug() call would need the same lock and the two threads
-# deadlock. Quieting urllib3 to WARNING keeps the debug() calls cheap
-# no-ops and avoids the lock contention entirely. Set
-# LOGTAIL_KEEP_URLLIB3_LOGS=1 to opt out.
-if os.getenv('LOGTAIL_KEEP_URLLIB3_LOGS', '').lower() not in ('1', 'true', 'yes'):
-    _urllib3_logger = logging.getLogger('urllib3')
-    if _urllib3_logger.level == logging.NOTSET or _urllib3_logger.level < logging.WARNING:
-        _urllib3_logger.setLevel(logging.WARNING)
-
 _handlers = weakref.WeakSet()
 
 
@@ -111,7 +96,8 @@ class LogtailHandler(logging.Handler):
 
     def flush(self):
         if self.flush_thread and self.flush_thread.is_alive():
-             self.flush_thread.flush(timeout=self.flush_timeout)
+            if not self.flush_thread.flush(timeout=self.flush_timeout):
+                print('Gave up waiting for Better Stack uploads after {}s, logs are still buffered'.format(self.flush_timeout))
 
     def _reset_after_fork(self):
         # A forked child inherits the parent's queue with whatever was still buffered in it,

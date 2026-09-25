@@ -18,6 +18,7 @@ setup(
     name='logtail-python',
     version=VERSION,
     packages=['logtail'],
+    package_data={'logtail': ['py.typed']},
     include_package_data=True,
     license='ISC',
     description='Better Stack client library',

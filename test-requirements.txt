@@ -4,6 +4,5 @@ nose-py3
 mock>=1.0.1
 rq
 mypy>=1.13.0
-types-setuptools>=75.2.0.20241019
 msgpack-types>=0.5.0
 types-requests>=2.32.0.20241016

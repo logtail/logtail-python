@@ -2,21 +2,22 @@
 from __future__ import print_function, unicode_literals
 import logging
 import json
+from typing import Any, Callable, Optional
 
-from .helpers import DEFAULT_CONTEXT
+from .helpers import DEFAULT_CONTEXT, LogtailContext
 from .frame import create_frame
 
 
 class LogtailFormatter(logging.Formatter):
     def __init__(self,
-                 context=DEFAULT_CONTEXT,
-                 json_default=None,
-                 json_encoder=None):
+                 context: LogtailContext = DEFAULT_CONTEXT,
+                 json_default: Optional[Callable[[Any], Any]] = None,
+                 json_encoder: Optional[type[json.JSONEncoder]] = None) -> None:
         self.context = context
         self.json_default = json_default
         self.json_encoder = json_encoder
 
-    def format(self, record):
+    def format(self, record: logging.LogRecord) -> str:
         # Because the formatter does not have an underlying format string for
         # which `extra` may be used to substitute arguments (see
         # https://docs.python.org/2/library/logging.html#logging.debug ), we

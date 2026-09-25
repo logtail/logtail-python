@@ -4,9 +4,10 @@ import logging
 import json
 import os
 import weakref
+from typing import Any, Optional
 
 from .compat import queue
-from .helpers import DEFAULT_CONTEXT
+from .helpers import DEFAULT_CONTEXT, LogtailContext
 from .flusher import FlushWorker, TransportFrame, in_flush_worker
 from .uploader import Uploader
 from .frame import create_frame
@@ -20,22 +21,22 @@ DEFAULT_DROP_EXTRA_EVENTS = True
 DEFAULT_INCLUDE_EXTRA_ATTRIBUTES = True
 DEFAULT_TIMEOUT = 30
 
-_handlers = weakref.WeakSet()
+_handlers: 'weakref.WeakSet[LogtailHandler]' = weakref.WeakSet()
 
 
 class LogtailHandler(logging.Handler):
     def __init__(self,
-                 source_token,
-                 host=DEFAULT_HOST,
-                 buffer_capacity=DEFAULT_BUFFER_CAPACITY,
-                 flush_interval=DEFAULT_FLUSH_INTERVAL,
-                 check_interval=DEFAULT_CHECK_INTERVAL,
-                 raise_exceptions=DEFAULT_RAISE_EXCEPTIONS,
-                 drop_extra_events=DEFAULT_DROP_EXTRA_EVENTS,
-                 include_extra_attributes=DEFAULT_INCLUDE_EXTRA_ATTRIBUTES,
-                 context=DEFAULT_CONTEXT,
-                 timeout=DEFAULT_TIMEOUT,
-                 level=logging.NOTSET):
+                 source_token: str,
+                 host: str = DEFAULT_HOST,
+                 buffer_capacity: int = DEFAULT_BUFFER_CAPACITY,
+                 flush_interval: float = DEFAULT_FLUSH_INTERVAL,
+                 check_interval: float = DEFAULT_CHECK_INTERVAL,
+                 raise_exceptions: bool = DEFAULT_RAISE_EXCEPTIONS,
+                 drop_extra_events: bool = DEFAULT_DROP_EXTRA_EVENTS,
+                 include_extra_attributes: bool = DEFAULT_INCLUDE_EXTRA_ATTRIBUTES,
+                 context: LogtailContext = DEFAULT_CONTEXT,
+                 timeout: float = DEFAULT_TIMEOUT,
+                 level: int = logging.NOTSET) -> None:
         super(LogtailHandler, self).__init__(level=level)
         self.source_token = source_token
         if host.startswith('https://') or host.startswith('http://'):
@@ -43,7 +44,7 @@ class LogtailHandler(logging.Handler):
         else:
             self.host = "https://" + host
         self.context = context
-        self.pipe = queue.Queue(maxsize=buffer_capacity)
+        self.pipe: 'queue.Queue[dict[str, Any]]' = queue.Queue(maxsize=buffer_capacity)
         self.uploader = Uploader(self.source_token, self.host, timeout)
         self.drop_extra_events = drop_extra_events
         self.include_extra_attributes = include_extra_attributes
@@ -53,10 +54,10 @@ class LogtailHandler(logging.Handler):
         self.raise_exceptions = raise_exceptions
         self.dropcount = 0
         # Do not initialize the flush thread yet because it causes issues on Render.
-        self.flush_thread = None
+        self.flush_thread: Optional[FlushWorker] = None
         _handlers.add(self)
 
-    def ensure_flush_thread_alive(self):
+    def ensure_flush_thread_alive(self) -> None:
         if self.flush_thread and self.flush_thread.is_alive():
             return
 
@@ -69,7 +70,7 @@ class LogtailHandler(logging.Handler):
         )
         self.flush_thread.start()
 
-    def emit(self, record):
+    def emit(self, record: logging.LogRecord) -> None:
         try:
             self.ensure_flush_thread_alive()
 
@@ -90,11 +91,11 @@ class LogtailHandler(logging.Handler):
             if self.raise_exceptions:
                 raise e
 
-    def flush(self):
+    def flush(self) -> None:
         if self.flush_thread and self.flush_thread.is_alive():
              self.flush_thread.flush()
 
-    def _reset_after_fork(self):
+    def _reset_after_fork(self) -> None:
         # A forked child inherits the parent's queue with whatever was still buffered in it,
         # a flush thread object whose thread does not exist in the child, and an HTTP session
         # whose socket it shares with the parent, so it starts over with fresh ones.
@@ -103,7 +104,7 @@ class LogtailHandler(logging.Handler):
         self.uploader = Uploader(self.source_token, self.host, self.uploader.timeout)
 
 
-def _reset_handlers_after_fork():
+def _reset_handlers_after_fork() -> None:
     for handler in _handlers:
         handler._reset_after_fork()
 

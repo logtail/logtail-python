@@ -143,9 +143,44 @@ class TestFlushWorker(unittest.TestCase):
         for log in first_frame:
             pipe.put(log, block=False)
 
-        fw.step()  # must not raise AttributeError
+        with patch('builtins.print') as mock_print:
+            fw.step()  # must not raise AttributeError
 
         self.assertTrue(fw._clean)
+        # The batch is dropped here, so say why, as the network-error path does.
+        mock_print.assert_called_once_with('Failed to send logs to Better Stack after 3 retries: HTTP 500')
+
+    @patch('logtail.flusher.time.sleep')
+    def test_step_logs_any_server_5xx_after_retries(self, _mock_sleep):
+        def uploader(frame):
+            resp = requests.models.Response()
+            resp.status_code = 503
+            return resp
+
+        pipe, _, fw = self._setup_worker(uploader)
+        pipe.put('log', block=False)
+
+        with patch('builtins.print') as mock_print:
+            fw.step()
+
+        mock_print.assert_called_once_with('Failed to send logs to Better Stack after 3 retries: HTTP 503')
+
+    @patch('logtail.flusher.time.sleep')
+    def test_step_does_not_log_when_a_retry_succeeds(self, _mock_sleep):
+        status_codes = iter([500, 503, 202])
+
+        def uploader(frame):
+            resp = requests.models.Response()
+            resp.status_code = next(status_codes)
+            return resp
+
+        pipe, _, fw = self._setup_worker(uploader)
+        pipe.put('log', block=False)
+
+        with patch('builtins.print') as mock_print:
+            fw.step()
+
+        mock_print.assert_not_called()
 
     @patch('logtail.flusher.time.sleep')
     def test_step_still_logs_network_error_fake500(self, _mock_sleep):
@@ -164,7 +199,7 @@ class TestFlushWorker(unittest.TestCase):
         with patch('builtins.print') as mock_print:
             fw.step()
 
-        mock_print.assert_called_once()
+        mock_print.assert_called_once_with('Failed to send logs to Better Stack after 3 retries: network is down')
 
     def test_shutdown_condition_empties_queue_and_shuts_down(self):
         self.buffer_capacity = 10

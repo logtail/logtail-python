@@ -10,9 +10,6 @@ from .helpers import LogtailContext
 
 def create_frame(record: logging.LogRecord, message: str, context: LogtailContext, include_extra_attributes: bool = False) -> dict[str, Any]:
     r = record.__dict__
-    # Django sends a request object in the record, which is not JSON serializable
-    if "request" in r and not isinstance(r["request"], (dict, list, bool, int, float, str)) :
-        del r["request"]
     frame: dict[str, Any] = {}
     frame['dt'] = datetime.fromtimestamp(r['created'], timezone.utc).isoformat()
     frame['level'] = _levelname(r['levelname'])
@@ -57,6 +54,10 @@ def _parse_custom_events(record: logging.LogRecord, include_extra_attributes: bo
     events: dict[str, Any] = {}
     for key, val in record.__dict__.items():
         if key in default_keys:
+            continue
+        # Django sends its request object in the record, which is not JSON serializable. It is
+        # left out of the frame but kept on the record, which every later handler receives too.
+        if key == 'request' and not isinstance(val, (dict, list, bool, int, float, str)):
             continue
         if not include_extra_attributes and not isinstance(val, dict):
             continue

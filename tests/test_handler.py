@@ -5,6 +5,7 @@ import os
 import time
 import threading
 import unittest
+import logging.handlers
 import logging
 
 from unittest.mock import patch
@@ -191,6 +192,23 @@ class TestLogtailHandler(unittest.TestCase):
 
         handler.raise_exceptions = False
         logger.critical('hello')
+
+    @patch('logtail.handler.FlushWorker')
+    def test_emit_leaves_the_django_request_on_the_record_for_the_next_handler(self, MockWorker):
+        handler = LogtailHandler(source_token=self.source_token, buffer_capacity=1)
+        next_handler = logging.handlers.BufferingHandler(capacity=10)
+        logger = logging.getLogger(__name__)
+        logger.handlers = []
+        logger.addHandler(handler)
+        logger.addHandler(next_handler)
+        request = UnserializableObject()  # stands in for a Django HttpRequest
+
+        logger.error('Internal Server Error: /orders', extra={'status_code': 500, 'request': request})
+
+        log_entry = handler.pipe.get()
+        self.assertEqual(log_entry['message'], 'Internal Server Error: /orders')
+        self.assertNotIn('request', log_entry)
+        self.assertIs(next_handler.buffer[0].request, request)
 
     @patch('logtail.handler.FlushWorker')
     def test_can_send_unserializable_extra_data(self, MockWorker):

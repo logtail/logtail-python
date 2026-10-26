@@ -6,6 +6,7 @@ import threading
 import json
 import unittest
 import pdb
+import logging.handlers
 import logging
 
 import logtail
@@ -101,6 +102,21 @@ class TestLogtailFormatter(unittest.TestCase):
         frame = json.loads(line)
         self.assertEqual(frame['message'], 'goodbye')
         self.assertEqual(frame['context']['data'], {'not_encodable': '<Dummy instance>'})
+
+    def test_format_leaves_the_django_request_on_the_record_for_the_next_handler(self):
+        formatter = logtail.LogtailFormatter(context=self.context)
+        logger, loglines = logger_and_lines(formatter)
+        next_handler = logging.handlers.BufferingHandler(capacity=10)
+        logger.addHandler(next_handler)
+        request = Dummy()  # stands in for a Django HttpRequest
+
+        logger.error('Internal Server Error: /orders', extra={'status_code': 500, 'request': request})
+
+        line = self._check_and_get_line(loglines)
+        frame = json.loads(line)
+        self.assertEqual(frame['status_code'], 500)
+        self.assertNotIn('request', frame)
+        self.assertIs(next_handler.buffer[0].request, request)
 
 
 class Dummy(object):

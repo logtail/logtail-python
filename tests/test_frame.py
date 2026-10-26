@@ -51,3 +51,24 @@ class TestLogtailLogEntry(unittest.TestCase):
         frame = create_frame(log_record, log_record.getMessage(), LogtailContext())
 
         self.assertEqual(frame['context']['runtime']['file'], 'D:\\workspace\\app\\main.py')
+
+    def test_create_frame_leaves_a_django_request_on_the_record(self):
+        # Django logs its request as `extra={'request': request}`, and the same record goes on to
+        # every later handler, so the frame omits the request without deleting it from the record.
+        log_record = logging.LogRecord("logtail-test", 40, "/some/path", 10, "Internal Server Error: /orders", [], None)
+        request = object()
+        log_record.request = request
+
+        frame = create_frame(log_record, log_record.getMessage(), LogtailContext(), include_extra_attributes=True)
+
+        self.assertNotIn('request', frame)
+        self.assertIs(log_record.request, request)
+
+    def test_create_frame_leaves_a_none_request_on_the_record(self):
+        log_record = logging.LogRecord("logtail-test", 40, "/some/path", 10, "Internal Server Error: /orders", [], None)
+        log_record.request = None
+
+        frame = create_frame(log_record, log_record.getMessage(), LogtailContext(), include_extra_attributes=True)
+
+        self.assertNotIn('request', frame)
+        self.assertIn('request', log_record.__dict__)

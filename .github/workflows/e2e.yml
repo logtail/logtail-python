@@ -91,7 +91,8 @@ jobs:
   test:
     needs: plan
     name: ${{ matrix.name }}
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    # Forks and Dependabot get no repository secrets, so their pull requests run only the plan.
+    if: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]') }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 20
     strategy:

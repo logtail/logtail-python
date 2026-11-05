@@ -161,6 +161,14 @@ jobs:
               "$GITHUB_WORKSPACE"/dist/*.whl) ;;
               *) echo "::error::logtail-python was not installed from the wheel built here: pip recorded '${DIRECT_URL:-no origin}'."; FAILED=1 ;;
             esac
+            # And the installed package is the checkout's code, file for file. Resolved from example-project/, where
+            # `import logtail` cannot mean the checkout's own logtail/ directory.
+            INSTALLED_DIR=$(cd example-project && python -c 'import logtail, os; print(os.path.dirname(logtail.__file__))')
+            if ! diff -r --exclude=__pycache__ logtail "$INSTALLED_DIR" > out/package.diff; then
+              head -n 20 out/package.diff
+              echo "::error::The installed logtail package in $INSTALLED_DIR differs from the checkout's logtail/ directory."
+              FAILED=1
+            fi
           elif [ -n "$DIRECT_URL" ]; then
             echo "::error::logtail-python was installed from $DIRECT_URL instead of PyPI."; FAILED=1
           fi
@@ -176,12 +184,15 @@ jobs:
           fi
           exit "$FAILED"
 
-      # Before a source is created: a client that cannot even import with these versions needs no round trip.
+      # Before a source is created: a client that cannot even import with these versions needs no round trip. Run from
+      # example-project/, like the example: from the repository root `import logtail` would resolve to the checkout's
+      # logtail/ directory instead of the installed package.
       - name: "[Verify] The client imports with these versions"
+        working-directory: example-project
         run: |
-          if ! python -c "import logtail" 2> out/import.log; then
-            cat out/import.log
-            echo "::error::import logtail failed on $(python -V): $(tail -n 1 out/import.log)"
+          if ! python -c "import logtail" 2> ../out/import.log; then
+            cat ../out/import.log
+            echo "::error::import logtail failed on $(python -V): $(tail -n 1 ../out/import.log)"
             exit 1
           fi
 

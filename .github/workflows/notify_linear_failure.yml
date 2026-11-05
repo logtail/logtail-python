@@ -10,10 +10,6 @@ name: "Notify Linear on failure"
 on:
   workflow_call:
     inputs:
-      assignee:
-        description: "Who gets the issue: petr"
-        type: string
-        default: petr
       job_summaries:
         description: >-
           Adds each failed job's summary to the issue, or its errors when it has none. A job hands its summary over as
@@ -87,7 +83,6 @@ jobs:
           LINEAR_STATUS_PLAN_ID: ${{ secrets.LINEAR_STATUS_PLAN_ID }}
           LINEAR_PROJECT_INGESTION_FOR_EVERYTHING_ID: ${{ secrets.LINEAR_PROJECT_INGESTION_FOR_EVERYTHING_ID }}
           LINEAR_ASSIGNEE_PETR_ID: ${{ secrets.LINEAR_ASSIGNEE_PETR_ID }}
-          ASSIGNEE: ${{ inputs.assignee }}
           CANARY: ${{ steps.ctx.outputs.canary }}
           REPOSITORY: ${{ github.repository }}
           WORKFLOW: ${{ github.event.workflow_run.name || github.workflow }}
@@ -98,10 +93,6 @@ jobs:
           SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
           COMMIT_MESSAGE: ${{ github.event.workflow_run.head_commit.message || github.event.head_commit.message }}
         run: |
-          case "$ASSIGNEE" in
-            petr) ASSIGNEE_ID="$LINEAR_ASSIGNEE_PETR_ID" ;;
-            *) echo "::error::unknown assignee \"$ASSIGNEE\", this workflow knows petr"; exit 1 ;;
-          esac
           if [ "$CANARY" = true ]; then
             TITLE="E2E canary failure: $WORKFLOW ($REPOSITORY)"; PRIORITY=4
           else
@@ -150,7 +141,7 @@ jobs:
             echo "added this run to the open issue $ISSUE_URL"
           else
             PAYLOAD=$(jq -nc --arg title "$TITLE" --rawfile description description.md --arg teamId "$LINEAR_TEAM_ID" \
-              --arg assigneeId "$ASSIGNEE_ID" --arg stateId "$LINEAR_STATUS_PLAN_ID" \
+              --arg assigneeId "$LINEAR_ASSIGNEE_PETR_ID" --arg stateId "$LINEAR_STATUS_PLAN_ID" \
               --arg projectId "$LINEAR_PROJECT_INGESTION_FOR_EVERYTHING_ID" --argjson priority "$PRIORITY" '{
               query: "mutation ($input: IssueCreateInput!) { issueCreate(input: $input) { success issue { url } } }",
               variables: {input: {title: $title, description: $description, teamId: $teamId, assigneeId: $assigneeId,

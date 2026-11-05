@@ -9,6 +9,8 @@ name: E2E
 #   latest  the newest stable CPython with the newest requests and msgpack; pip quietly installing an older release
 #           than the newest fails the job
 #   canary  the next CPython minor as a pre-release, requests and msgpack installed with --pre
+# Every job checks, before it creates a source, that the Python running, the client install (the wheel built here, or
+# PyPI on the schedule) and the requests and msgpack versions are the planned ones, and writes them into its summary.
 # Pushes to master and pull requests install the client built from the checkout. The daily schedule installs the
 # newest release from PyPI, which is what a customer gets today. A failure on master or on the schedule files a Linear
 # issue (notify_linear_failure.yml), at low priority when only the canary failed.
@@ -98,6 +100,7 @@ jobs:
     env:
       LEG: ${{ matrix.leg }}
       CLIENT_FROM: ${{ matrix.source }}
+      PLANNED_PYTHON: ${{ matrix.python }}
       PLANNED_REQUESTS: ${{ matrix.requests }}
       PLANNED_MSGPACK: ${{ matrix.msgpack }}
 
@@ -136,20 +139,41 @@ jobs:
       - name: "[Verify] Installed versions are the planned ones"
         run: |
           installed() { pip show "$1" | sed -n 's/^Version: //p'; }
+          PYTHON=$(python -c 'import platform; print(platform.python_version())')
           REQUESTS=$(installed requests)
           MSGPACK=$(installed msgpack)
+          # pip records where a local wheel came from (PEP 610, direct_url.json); a release from PyPI leaves no record.
+          DIRECT_URL=$(python -c 'import importlib.metadata as m; print(m.distribution("logtail-python").read_text("direct_url.json") or "")')
+          WHEEL=""
+          [ -z "$DIRECT_URL" ] || WHEEL=$(jq -r '.url // ""' <<<"$DIRECT_URL" | sed 's#^file://##')
+          if [ -n "$WHEEL" ]; then FROM="the wheel built here, $(basename "$WHEEL")"; else FROM="PyPI"; fi
           mkdir -p out
-          echo "- $(python -VV), logtail-python $(installed logtail-python) from $CLIENT_FROM, requests $REQUESTS, msgpack $MSGPACK" | tee -a out/versions.md "$GITHUB_STEP_SUMMARY"
-          # The canary takes whatever pre-release pip finds, so it only reports.
-          [ "$LEG" != canary ] || exit 0
+          echo "- $(python -VV), logtail-python $(installed logtail-python) from $FROM, requests $REQUESTS, msgpack $MSGPACK" | tee -a out/versions.md "$GITHUB_STEP_SUMMARY"
           FAILED=0
-          for check in "requests $REQUESTS $PLANNED_REQUESTS" "msgpack $MSGPACK $PLANNED_MSGPACK"; do
-            read -r name got want <<<"$check"
-            if [ "$got" != "$want" ]; then
-              echo "::error::$name $got is installed, but the $LEG leg plans $want."
-              FAILED=1
-            fi
-          done
+          # The planned Python is a minor (3.10), an exact version (3.15.2) or a pre-release minor (3.16-dev).
+          WANT=${PLANNED_PYTHON%-dev}
+          case "$PYTHON" in
+            "$WANT" | "$WANT".*) ;;
+            *) echo "::error::Python $PYTHON is running, but the $LEG leg plans $PLANNED_PYTHON."; FAILED=1 ;;
+          esac
+          if [ "$CLIENT_FROM" = checkout ]; then
+            case "$WHEEL" in
+              "$GITHUB_WORKSPACE"/dist/*.whl) ;;
+              *) echo "::error::logtail-python was not installed from the wheel built here: pip recorded '${DIRECT_URL:-no origin}'."; FAILED=1 ;;
+            esac
+          elif [ -n "$DIRECT_URL" ]; then
+            echo "::error::logtail-python was installed from $DIRECT_URL instead of PyPI."; FAILED=1
+          fi
+          # The canary takes whatever pre-release pip finds, so its dependencies only report.
+          if [ "$LEG" != canary ]; then
+            for check in "requests $REQUESTS $PLANNED_REQUESTS" "msgpack $MSGPACK $PLANNED_MSGPACK"; do
+              read -r name got want <<<"$check"
+              if [ "$got" != "$want" ]; then
+                echo "::error::$name $got is installed, but the $LEG leg plans $want."
+                FAILED=1
+              fi
+            done
+          fi
           exit "$FAILED"
 
       # Before a source is created: a client that cannot even import with these versions needs no round trip.
@@ -238,6 +262,5 @@ jobs:
       checks: read
     uses: ./.github/workflows/notify_linear_failure.yml
     with:
-      assignee: petr
       job_summaries: true
     secrets: inherit

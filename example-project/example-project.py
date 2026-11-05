@@ -7,15 +7,18 @@
 # Import Better Stack client library and default logging library
 from logtail import LogtailHandler
 import logging
+import os
 import sys
 
-# Check for program arguments
-if len(sys.argv) != 3:
-    print("Program requires source token and ingesting host as an argument, run the program as followed\npython example-project.py <source_token> <ingesting_host>");
-    sys.exit();
+# Read the source token and ingesting host from the environment
+source_token = os.environ.get('BETTER_STACK_SOURCE_TOKEN')
+ingesting_host = os.environ.get('BETTER_STACK_INGESTING_HOST')
+if not source_token or not ingesting_host:
+    print("Usage: BETTER_STACK_SOURCE_TOKEN=<source_token> BETTER_STACK_INGESTING_HOST=<ingesting_host> python example-project.py")
+    sys.exit(1)
 
 # Create handler
-handler = LogtailHandler(source_token=sys.argv[1], host=sys.argv[2])
+handler = LogtailHandler(source_token=source_token, host=ingesting_host)
 
 # Create logger
 logger = logging.getLogger(__name__)

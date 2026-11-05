@@ -14,10 +14,12 @@ pip install logtail-python
 
 ## Run the example project
 
-To run the example application, simply run the following command:
+To run the example application, set your source token and ingesting host in the environment and run the program:
 
 ```bash
-python example-project.py <source_token> <ingesting_host>
+export BETTER_STACK_SOURCE_TOKEN=<source_token>
+export BETTER_STACK_INGESTING_HOST=<ingesting_host>
+python example-project.py
 ```
 
 _Don't forget to replace `<source_token>` and `<ingesting_host>` with your actual source token and ingesting host which you can find by going to **[Sources](https://telemetry.betterstack.com/team/0/sources) -> Configure** in Better Stack._
@@ -45,13 +47,14 @@ First, we need to import the Better Stack client library to our code. This can b
 # Import Better Stack client library and default logging library
 from logtail import LogtailHandler
 import logging
+import os
 ```
 
 Then we need to create a `handler`, which will be responsible for handling our log messages, and a `logger` that will create those messages and provide them to the `handler`.
 
 ```python
 # Create handler
-handler = LogtailHandler(source_token=sys.argv[1], host=sys.argv[2])
+handler = LogtailHandler(source_token=os.environ['BETTER_STACK_SOURCE_TOKEN'], host=os.environ['BETTER_STACK_INGESTING_HOST'])
 
 # Create logger
 logger = logging.getLogger(__name__)

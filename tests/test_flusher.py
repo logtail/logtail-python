@@ -4,6 +4,7 @@ import mock
 import requests
 import time
 import threading
+import types
 import unittest
 
 from unittest.mock import patch
@@ -200,6 +201,121 @@ class TestFlushWorker(unittest.TestCase):
             fw.step()
 
         mock_print.assert_called_once_with('Failed to send logs to Better Stack after 3 retries: network is down')
+
+    def _response(self, status_code, reason=None, content=b''):
+        response = requests.models.Response()
+        response.status_code = status_code
+        response.reason = reason
+        response._content = content
+        return response
+
+    def _fill(self, pipe):
+        for log in range(self.buffer_capacity):
+            pipe.put(log, block=False)
+
+    @patch('logtail.flusher.time.sleep')
+    def test_step_reports_a_rejected_batch_with_the_server_reason(self, _mock_sleep):
+        def uploader(frame):
+            return self._response(401, 'Unauthorized', b'{"errors":"Invalid source token"}')
+
+        pipe, _, fw = self._setup_worker(uploader)
+        self._fill(pipe)
+
+        with patch('builtins.print') as mock_print:
+            fw.step()
+
+        self.assertTrue(fw._clean)
+        mock_print.assert_called_once_with(
+            'Better Stack rejected 5 log records with HTTP 401 Unauthorized: {"errors":"Invalid source token"}. '
+            "Further rejections with this status won't be reported."
+        )
+
+    @patch('logtail.flusher.time.sleep')
+    def test_step_does_not_retry_a_rejected_batch(self, mock_sleep):
+        self.uploader_calls = 0
+
+        def uploader(frame):
+            self.uploader_calls += 1
+            return self._response(401, 'Unauthorized', b'{"errors":"Invalid source token"}')
+
+        pipe, _, fw = self._setup_worker(uploader)
+        self._fill(pipe)
+
+        with patch('builtins.print'):
+            fw.step()
+
+        self.assertEqual(self.uploader_calls, 1)
+        mock_sleep.assert_not_called()
+
+    @patch('logtail.flusher.time.sleep')
+    def test_step_reports_each_rejecting_status_once(self, _mock_sleep):
+        responses = iter([
+            self._response(401, 'Unauthorized', b'{"errors":"Invalid source token"}'),
+            self._response(401, 'Unauthorized', b'{"errors":"Invalid source token"}'),
+            self._response(422, 'Unprocessable Entity'),
+            self._response(202, 'Accepted'),
+            self._response(422, 'Unprocessable Entity'),
+            self._response(401, 'Unauthorized', b'{"errors":"Invalid source token"}'),
+        ])
+
+        pipe, _, fw = self._setup_worker(lambda frame: next(responses))
+
+        with patch('builtins.print') as mock_print:
+            for _ in range(6):
+                self._fill(pipe)
+                fw.step()
+
+        self.assertEqual(mock_print.call_args_list, [
+            mock.call(
+                'Better Stack rejected 5 log records with HTTP 401 Unauthorized: {"errors":"Invalid source token"}. '
+                "Further rejections with this status won't be reported."
+            ),
+            mock.call(
+                'Better Stack rejected 5 log records with HTTP 422 Unprocessable Entity. '
+                "Further rejections with this status won't be reported."
+            ),
+        ])
+
+    def test_step_does_not_report_an_accepted_batch(self):
+        pipe, _, fw = self._setup_worker(lambda frame: self._response(202, 'Accepted'))
+        self._fill(pipe)
+
+        with patch('builtins.print') as mock_print:
+            fw.step()
+
+        mock_print.assert_not_called()
+
+    def test_step_reports_a_rejected_single_record_with_the_start_of_an_html_reason_on_one_line(self):
+        self.buffer_capacity = 1
+        content = (
+            b'<html>\r\n<head><title>413 Request Entity Too Large</title></head>\r\n<body>\r\n'
+            b'<center><h1>413 Request Entity Too Large</h1></center>\r\n<hr><center>nginx</center>\r\n</body>\r\n</html>\r\n'
+            + b'<!-- a padding to disable MSIE and Chrome friendly error page -->\r\n' * 6
+        )
+        pipe, _, fw = self._setup_worker(lambda frame: self._response(413, 'Request Entity Too Large', content))
+        self._fill(pipe)
+
+        with patch('builtins.print') as mock_print:
+            fw.step()
+
+        mock_print.assert_called_once_with(
+            'Better Stack rejected 1 log record with HTTP 413 Request Entity Too Large: '
+            '<html> <head><title>413 Request Entity Too Large</title></head> <body> '
+            '<center><h1>413 Request Entity Too Large</h1></center> <hr><center>nginx</center> </body> </html> '
+            '<!-- a padding to disabl. '
+            "Further rejections with this status won't be reported."
+        )
+
+    def test_step_reports_a_rejection_without_a_reason_or_body(self):
+        pipe, _, fw = self._setup_worker(lambda frame: types.SimpleNamespace(status_code=403))
+        self._fill(pipe)
+
+        with patch('builtins.print') as mock_print:
+            fw.step()
+
+        mock_print.assert_called_once_with(
+            "Better Stack rejected 5 log records with HTTP 403. Further rejections with this status won't be reported."
+        )
 
     def test_shutdown_condition_empties_queue_and_shuts_down(self):
         self.buffer_capacity = 10

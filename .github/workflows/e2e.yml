@@ -143,7 +143,9 @@ jobs:
           REQUESTS=$(installed requests)
           MSGPACK=$(installed msgpack)
           # pip records where a local wheel came from (PEP 610, direct_url.json); a release from PyPI leaves no record.
-          DIRECT_URL=$(python -c 'import importlib.metadata as m; print(m.distribution("logtail-python").read_text("direct_url.json") or "")')
+          # Resolved from example-project/: in the repository root, python -m build left a logtail_python.egg-info that
+          # importlib.metadata would find first.
+          DIRECT_URL=$(cd example-project && python -c 'import importlib.metadata as m; print(m.distribution("logtail-python").read_text("direct_url.json") or "")')
           WHEEL=""
           [ -z "$DIRECT_URL" ] || WHEEL=$(jq -r '.url // ""' <<<"$DIRECT_URL" | sed 's#^file://##')
           if [ -n "$WHEEL" ]; then FROM="the wheel built here, $(basename "$WHEEL")"; else FROM="PyPI"; fi

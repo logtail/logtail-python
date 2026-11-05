@@ -1,5 +1,6 @@
 # coding: utf-8
 from __future__ import print_function, unicode_literals
+import inspect
 import json
 import logging
 import mock
@@ -42,6 +43,19 @@ class TestWorker(unittest.TestCase):
     def test_is_an_rq_worker(self):
         self.assertIsInstance(self.worker, rq.Worker)
 
+    def test_takes_every_argument_rq_calls_perform_job_with(self):
+        # rq 3.0 calls perform_job(job, queue, execution), rq 1.x and 2.x call perform_job(job, queue).
+        names = [name for name in inspect.signature(rq.Worker.perform_job).parameters if name != 'self']
+        arguments = [getattr(mock.sentinel, name) for name in names]
+
+        with patch.object(rq.Worker, 'perform_job', return_value=True) as perform_job:
+            try:
+                self.assertTrue(self.worker.perform_job(*arguments))
+            except TypeError as error:
+                self.fail("logtail.rq.Worker.perform_job rejects rq {}'s perform_job({}) call: {}".format(rq.__version__, ', '.join(names), error))
+
+        perform_job.assert_called_once_with(*arguments)
+
     @patch.object(rq.Worker, 'perform_job')
     def test_flushes_logtail_handlers_after_the_job(self, perform_job):
         perform_job.side_effect = lambda job, queue: self.logger.info('inside the job') or True
@@ -67,15 +81,17 @@ class TestWorker(unittest.TestCase):
     def test_records_logged_in_the_work_horse_are_sent_before_it_exits(self, perform_job):
         # RQ forks a work horse per job and ends it with os._exit(), which skips
         # the interpreter shutdown that would otherwise flush the handler.
-        perform_job.side_effect = lambda job, queue: self.logger.info('inside the work horse')
+        # rq 3.0 also passes the execution, rq 1.x and 2.x only the job and the queue.
+        perform_job.side_effect = lambda *args: self.logger.info('inside the work horse')
         read_end, write_end = os.pipe()
         self.handler.uploader = lambda frame: os.write(write_end, json.dumps([f['message'] for f in frame]).encode()) and mock.MagicMock(status_code=202)
 
         pid = os.fork()
         if pid == 0:
             self.worker.main_work_horse(mock.MagicMock(), mock.MagicMock())
-        os.waitpid(pid, 0)
+        _, status = os.waitpid(pid, 0)
         os.close(write_end)
         os.set_blocking(read_end, False)
 
+        self.assertEqual(os.waitstatus_to_exitcode(status), 0, 'the work horse failed before it could flush')
         self.assertEqual(json.loads(os.read(read_end, 4096)), ['inside the work horse'])

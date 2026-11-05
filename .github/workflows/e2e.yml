@@ -9,6 +9,8 @@ name: E2E
 #   latest  the newest stable CPython with the newest requests and msgpack; pip quietly installing an older release
 #           than the newest fails the job
 #   canary  the next CPython minor as a pre-release, requests and msgpack installed with --pre
+# The floor leg runs on the oldest Ubuntu image GitHub offers, latest and canary on ubuntu-latest, so a new runner image
+# is covered as well.
 # Every job checks, before it creates a source, that the Python running, the client install (the wheel built here, or
 # PyPI on the schedule) and the requests and msgpack versions are the planned ones, and writes them into its summary.
 # Pushes to master and pull requests install the client built from the checkout. The daily schedule installs the
@@ -90,7 +92,7 @@ jobs:
     needs: plan
     name: ${{ matrix.name }}
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
-    runs-on: ubuntu-24.04
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 20
     strategy:
       fail-fast: false

@@ -1,6 +1,7 @@
 # coding: utf-8
 from __future__ import print_function, unicode_literals
 import logging
+from typing import Any
 
 import rq
 
@@ -16,9 +17,10 @@ class Worker(rq.Worker):
     in django-rq.
     """
 
-    def perform_job(self, job: rq.job.Job, queue: rq.Queue) -> bool:
+    # rq 1.x and 2.x call perform_job(job, queue), rq 3.0 and later perform_job(job, queue, execution).
+    def perform_job(self, *args: Any, **kwargs: Any) -> bool:
         try:
-            return super(Worker, self).perform_job(job, queue)
+            return super(Worker, self).perform_job(*args, **kwargs)
         finally:
             for handler in _logtail_handlers():
                 handler.flush()

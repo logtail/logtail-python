@@ -1,0 +1,243 @@
+name: E2E
+
+# Proves that the client still delivers logs to Better Stack. Every job creates its own python source through the
+# Telemetry API, warms it up, runs example-project/example-project.py (what its README tells customers to run) with
+# that source's token and ingesting host, reads the stored rows back through the testing team's SQL API connection,
+# checks them exactly against e2e/expected.json (nothing missing, extra or duplicated), and deletes the source again,
+# together with sources of earlier runs left behind for more than 3 hours. e2e/plan.py plans three legs:
+#   floor   the oldest Python, requests and msgpack this package declares (setup.py and requirements.txt)
+#   latest  the newest stable CPython with the newest requests and msgpack; pip quietly installing an older release
+#           than the newest fails the job
+#   canary  the next CPython minor as a pre-release, requests and msgpack installed with --pre
+# Pushes to master and pull requests install the client built from the checkout. The daily schedule installs the
+# newest release from PyPI, which is what a customer gets today. A failure on master or on the schedule files a Linear
+# issue (notify_linear_failure.yml), at low priority when only the canary failed.
+# Pull requests from forks run only the plan: they get no secrets, so they cannot create a source.
+#
+# Secrets: TEST_TEAM_TELEMETRY_API, TEST_TEAM_CONNECTION_USERNAME, TEST_TEAM_CONNECTION_PASSWORD (Better Stack's E2E
+# testing team), LINEAR_* (see notify_linear_failure.yml).
+#
+# One leg, or exact versions: Actions → E2E → Run workflow, pick the leg and optionally set python-version (e.g. 3.12.7
+# or 3.16.0-alpha.1), requests-version or msgpack-version, which replace the planned versions of every leg that runs.
+# That is how a failure is bisected to one release.
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  schedule:
+    - cron: '30 5 * * *'
+  workflow_dispatch:
+    inputs:
+      leg:
+        description: 'Leg to run'
+        type: choice
+        options: [all, floor, latest, canary]
+        default: all
+      source:
+        description: 'checkout: the client built from this checkout, as the Release workflow builds it. pypi: its newest release on PyPI, what a customer installs'
+        type: choice
+        options: [checkout, pypi]
+        default: checkout
+      python-version:
+        description: 'One exact Python version (e.g. 3.12.7) instead of the planned one'
+        type: string
+      requests-version:
+        description: 'One exact requests version (e.g. 2.19.0) instead of the planned one'
+        type: string
+      msgpack-version:
+        description: 'One exact msgpack version (e.g. 0.6.0) instead of the planned one'
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+
+    steps:
+      - name: "[Setup] Checkout code"
+        uses: actions/checkout@v7
+
+      - name: "[Setup] Python"
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.x'
+
+      - name: "[Test] plan_test.py"
+        run: python -m unittest discover -s e2e -p 'plan_test.py'
+
+      - name: "[Setup] Plan the legs"
+        id: plan
+        env:
+          LEG: ${{ inputs.leg || 'all' }}
+          PYTHON_VERSION: ${{ inputs.python-version }}
+          REQUESTS_VERSION: ${{ inputs.requests-version }}
+          MSGPACK_VERSION: ${{ inputs.msgpack-version }}
+          # The schedule tests what a customer installs today, pushes and pull requests test the checkout.
+          CLIENT_FROM: ${{ github.event_name == 'schedule' && 'pypi' || inputs.source || 'checkout' }}
+        run: |
+          MATRIX=$(python e2e/plan.py --leg "$LEG" --python "$PYTHON_VERSION" --requests "$REQUESTS_VERSION" --msgpack "$MSGPACK_VERSION" --source "$CLIENT_FROM")
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+          jq . <<<"$MATRIX"
+
+  test:
+    needs: plan
+    name: ${{ matrix.name }}
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.matrix) }}
+
+    env:
+      LEG: ${{ matrix.leg }}
+      CLIENT_FROM: ${{ matrix.source }}
+      PLANNED_REQUESTS: ${{ matrix.requests }}
+      PLANNED_MSGPACK: ${{ matrix.msgpack }}
+
+    steps:
+      - name: "[Setup] Checkout code"
+        uses: actions/checkout@v7
+
+      - name: "[Setup] Python ${{ matrix.python }}"
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+          allow-prereleases: ${{ matrix.prerelease }}
+
+      - name: "[Setup] Install the client"
+        run: |
+          python -m pip install --upgrade pip
+          if [ "$CLIENT_FROM" = pypi ]; then
+            pip install logtail-python
+          else
+            # The wheel the Release workflow builds and uploads to PyPI.
+            pip install build
+            python -m build --wheel
+            pip install dist/*.whl
+          fi
+
+      - name: "[Setup] Install requests and msgpack at the leg's versions"
+        run: |
+          # Pinned, so that pip cannot quietly install an older release when the planned one does not support this
+          # Python: it fails and names the release instead. The canary takes whatever pre-release pip finds.
+          if [ "$LEG" = canary ]; then
+            pip install --upgrade --pre requests msgpack
+          else
+            pip install "requests==$PLANNED_REQUESTS" "msgpack==$PLANNED_MSGPACK"
+          fi
+
+      - name: "[Verify] Installed versions are the planned ones"
+        run: |
+          installed() { pip show "$1" | sed -n 's/^Version: //p'; }
+          REQUESTS=$(installed requests)
+          MSGPACK=$(installed msgpack)
+          mkdir -p out
+          echo "- $(python -VV), logtail-python $(installed logtail-python) from $CLIENT_FROM, requests $REQUESTS, msgpack $MSGPACK" | tee -a out/versions.md "$GITHUB_STEP_SUMMARY"
+          # The canary takes whatever pre-release pip finds, so it only reports.
+          [ "$LEG" != canary ] || exit 0
+          FAILED=0
+          for check in "requests $REQUESTS $PLANNED_REQUESTS" "msgpack $MSGPACK $PLANNED_MSGPACK"; do
+            read -r name got want <<<"$check"
+            if [ "$got" != "$want" ]; then
+              echo "::error::$name $got is installed, but the $LEG leg plans $want."
+              FAILED=1
+            fi
+          done
+          exit "$FAILED"
+
+      # Before a source is created: a client that cannot even import with these versions needs no round trip.
+      - name: "[Verify] The client imports with these versions"
+        run: |
+          if ! python -c "import logtail" 2> out/import.log; then
+            cat out/import.log
+            echo "::error::import logtail failed on $(python -V): $(tail -n 1 out/import.log)"
+            exit 1
+          fi
+
+      - name: "[Setup] Create a source"
+        id: source
+        uses: ./.github/actions/create-source
+        with:
+          api-token: ${{ secrets.TEST_TEAM_TELEMETRY_API }}
+          name: e2e-python-gh${{ github.run_id }}a${{ github.run_attempt }}-${{ matrix.leg }}
+          platform: python
+
+      # Run from example-project/, so that `import logtail` finds the installed client and not the checkout's
+      # logtail/ directory: Python puts only the script's own directory on sys.path.
+      - name: "[Test] Run the example project"
+        working-directory: example-project
+        env:
+          BETTER_STACK_SOURCE_TOKEN: ${{ steps.source.outputs.token }}
+          BETTER_STACK_INGESTING_HOST: ${{ steps.source.outputs.ingesting-host }}
+        run: |
+          set -o pipefail
+          mkdir -p ../out
+          if ! python example-project.py 2>&1 | tee ../out/example.log; then
+            echo "::error::The example project failed: $(tail -n 1 ../out/example.log)"
+            exit 1
+          fi
+
+      - name: "[Verify] Read the rows back"
+        uses: ./.github/actions/verify-logs
+        with:
+          connection-username: ${{ secrets.TEST_TEAM_CONNECTION_USERNAME }}
+          connection-password: ${{ secrets.TEST_TEAM_CONNECTION_PASSWORD }}
+          connect-host: ${{ steps.source.outputs.connect-host }}
+          collection: ${{ steps.source.outputs.collection }}
+          expected: e2e/expected.json
+
+      - name: "[Cleanup] Delete this job's source and stale ones of earlier runs"
+        if: ${{ always() }}
+        uses: ./.github/actions/cleanup-sources
+        with:
+          api-token: ${{ secrets.TEST_TEAM_TELEMETRY_API }}
+          prefix: e2e-python-
+          id: ${{ steps.source.outputs.id }}
+
+      - name: "[Report] Job summary"
+        if: ${{ always() }}
+        run: |
+          if [ -f out/summary.md ]; then
+            { echo; cat out/summary.md; } >> "$GITHUB_STEP_SUMMARY"
+            # The Linear issue names the job and links the run, so it gets the versions, the read-back and the
+            # cleanup only when that left something behind. Without a read-back summary the notifier takes the
+            # job's ::error:: lines instead.
+            mkdir -p report
+            { cat out/versions.md; echo; cat out/summary.md; } > report/summary.md
+            if grep -q '❌' out/cleanup.md 2>/dev/null; then { echo; cat out/cleanup.md; } >> report/summary.md; fi
+          else
+            { echo; echo "❌ Stopped before the rows were read back, see the failed step."; } >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [ -f out/cleanup.md ]; then { echo; cat out/cleanup.md; } >> "$GITHUB_STEP_SUMMARY"; fi
+
+      - name: "[Report] Hand the summary to the Linear issue"
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-summary-${{ matrix.name }}
+          path: report/summary.md
+          if-no-files-found: ignore
+          retention-days: 7
+          # A re-run attempt uploads under the same name.
+          overwrite: true
+
+  notify-linear:
+    if: ${{ failure() && (github.ref == 'refs/heads/master' || github.event_name == 'schedule') }}
+    needs: [test]
+    # The notifier reads the failed jobs, their summary artifacts and their annotations.
+    permissions:
+      contents: read
+      actions: read
+      checks: read
+    uses: ./.github/workflows/notify_linear_failure.yml
+    with:
+      assignee: petr
+      job_summaries: true
+    secrets: inherit

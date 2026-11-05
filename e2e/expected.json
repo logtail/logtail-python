@@ -1,0 +1,32 @@
+[
+  {
+    "level": "debug",
+    "message": "I am using Better Stack!",
+    "contains": {"severity": 1, "context": {"runtime": {"file": "example-project.py", "logger_name": "__main__"}}}
+  },
+  {
+    "level": "info",
+    "message": "I love Better Stack!",
+    "contains": {"severity": 2, "context": {"runtime": {"file": "example-project.py", "logger_name": "__main__"}}}
+  },
+  {
+    "level": "warning",
+    "message": "Log structured data",
+    "contains": {"severity": 3, "context": {"runtime": {"file": "example-project.py", "logger_name": "__main__"}}, "item": {"url": "https://fictional-store.com/item-123", "price": 100.0}}
+  },
+  {
+    "level": "error",
+    "message": "Oops! An error occurred!",
+    "contains": {"severity": 4, "context": {"runtime": {"file": "example-project.py", "logger_name": "__main__"}}}
+  },
+  {
+    "level": "critical",
+    "message": "Its not working, needs to be fixed ASAP!",
+    "contains": {"severity": 5, "context": {"runtime": {"file": "example-project.py", "logger_name": "__main__"}}}
+  },
+  {
+    "level": "error",
+    "message_prefix": "Error occurred while calling non-existing function\nTraceback (most recent call last):\n",
+    "contains": {"severity": 4, "context": {"runtime": {"file": "example-project.py", "logger_name": "__main__"}}, "message": "NameError: name 'nonexisting_function' is not defined"}
+  }
+]

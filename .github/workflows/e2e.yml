@@ -17,8 +17,9 @@ name: E2E
 # Secrets: TEST_TEAM_TELEMETRY_API, TEST_TEAM_CONNECTION_USERNAME, TEST_TEAM_CONNECTION_PASSWORD (Better Stack's E2E
 # testing team), LINEAR_* (see notify_linear_failure.yml).
 #
-# One leg or one exact Python: Actions → E2E → Run workflow, pick the leg and optionally set python-version (e.g.
-# 3.12.7 or 3.16.0-alpha.1), which replaces the planned Python of every leg that runs.
+# One leg, or exact versions: Actions → E2E → Run workflow, pick the leg and optionally set python-version (e.g. 3.12.7
+# or 3.16.0-alpha.1), requests-version or msgpack-version, which replace the planned versions of every leg that runs.
+# That is how a failure is bisected to one release.
 
 on:
   push:
@@ -40,6 +41,12 @@ on:
         default: checkout
       python-version:
         description: 'One exact Python version (e.g. 3.12.7) instead of the planned one'
+        type: string
+      requests-version:
+        description: 'One exact requests version (e.g. 2.19.0) instead of the planned one'
+        type: string
+      msgpack-version:
+        description: 'One exact msgpack version (e.g. 0.6.0) instead of the planned one'
         type: string
 
 permissions:
@@ -68,10 +75,12 @@ jobs:
         env:
           LEG: ${{ inputs.leg || 'all' }}
           PYTHON_VERSION: ${{ inputs.python-version }}
+          REQUESTS_VERSION: ${{ inputs.requests-version }}
+          MSGPACK_VERSION: ${{ inputs.msgpack-version }}
           # The schedule tests what a customer installs today, pushes and pull requests test the checkout.
           CLIENT_FROM: ${{ github.event_name == 'schedule' && 'pypi' || inputs.source || 'checkout' }}
         run: |
-          MATRIX=$(python e2e/plan.py --leg "$LEG" --python "$PYTHON_VERSION" --source "$CLIENT_FROM")
+          MATRIX=$(python e2e/plan.py --leg "$LEG" --python "$PYTHON_VERSION" --requests "$REQUESTS_VERSION" --msgpack "$MSGPACK_VERSION" --source "$CLIENT_FROM")
           echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
           jq . <<<"$MATRIX"
 
@@ -116,11 +125,13 @@ jobs:
 
       - name: "[Setup] Install requests and msgpack at the leg's versions"
         run: |
-          case "$LEG" in
-            floor) pip install "requests==$PLANNED_REQUESTS" "msgpack==$PLANNED_MSGPACK" ;;
-            latest) pip install --upgrade requests msgpack ;;
-            canary) pip install --upgrade --pre requests msgpack ;;
-          esac
+          # Pinned, so that pip cannot quietly install an older release when the planned one does not support this
+          # Python: it fails and names the release instead. The canary takes whatever pre-release pip finds.
+          if [ "$LEG" = canary ]; then
+            pip install --upgrade --pre requests msgpack
+          else
+            pip install "requests==$PLANNED_REQUESTS" "msgpack==$PLANNED_MSGPACK"
+          fi
 
       - name: "[Verify] Installed versions are the planned ones"
         run: |
@@ -135,11 +146,20 @@ jobs:
           for check in "requests $REQUESTS $PLANNED_REQUESTS" "msgpack $MSGPACK $PLANNED_MSGPACK"; do
             read -r name got want <<<"$check"
             if [ "$got" != "$want" ]; then
-              echo "::error::pip installed $name $got, but the $LEG leg plans $want. pip quietly falls back to an older release when the planned one does not install on this Python, and that fallback is what this check catches."
+              echo "::error::$name $got is installed, but the $LEG leg plans $want."
               FAILED=1
             fi
           done
           exit "$FAILED"
+
+      # Before a source is created: a client that cannot even import with these versions needs no round trip.
+      - name: "[Verify] The client imports with these versions"
+        run: |
+          if ! python -c "import logtail" 2> out/import.log; then
+            cat out/import.log
+            echo "::error::import logtail failed on $(python -V): $(tail -n 1 out/import.log)"
+            exit 1
+          fi
 
       - name: "[Setup] Create a source"
         id: source

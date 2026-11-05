@@ -1,6 +1,6 @@
 """Prints the job matrix of the E2E workflow (.github/workflows/e2e.yml) as JSON.
 
-    python e2e/plan.py --leg all|floor|latest|canary [--python <exact version>] [--source checkout|pypi]
+    python e2e/plan.py --leg all|floor|latest|canary [--python <exact>] [--requests <exact>] [--msgpack <exact>] [--source checkout|pypi]
 
 floor   the oldest versions this package declares: Python from python_requires in setup.py, requests and
         msgpack from their >= floors in requirements.txt. Works offline.
@@ -8,8 +8,9 @@ latest  the newest stable CPython that actions/setup-python can install, and the
         on PyPI. The job fails when pip installs anything older than what is planned here.
 canary  the next CPython minor as a pre-release ("3.16-dev"), with requests and msgpack installed with --pre.
 
---python replaces the planned Python of every leg with one exact version. --source is copied into every
-entry: checkout installs the client built from this checkout, pypi installs its newest release from PyPI.
+--python, --requests and --msgpack replace the planned version of every leg with one exact version, which is
+how a run bisects a failure to one release. --source is copied into every entry: checkout installs the client
+built from this checkout, pypi installs its newest release from PyPI.
 
 Standard library only, so the plan job needs nothing but a Python.
 """
@@ -18,6 +19,7 @@ import functools
 import json
 import pathlib
 import re
+import time
 import urllib.request
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -85,41 +87,47 @@ def entry(leg, python, requests, msgpack, source):
 
 
 @functools.lru_cache(maxsize=None)
-def fetch_json(url):
-    try:
-        with urllib.request.urlopen(url, timeout=30) as response:
-            return json.load(response)
-    except Exception as error:
-        raise SystemExit('GET {} failed: {}'.format(url, error))
+def fetch_json(url, attempts=3):
+    # A registry hiccup at schedule time should not file a Linear issue, so the lookup is retried.
+    for attempt in range(1, attempts + 1):
+        try:
+            with urllib.request.urlopen(url, timeout=30) as response:
+                return json.load(response)
+        except Exception as error:
+            if attempt == attempts:
+                raise SystemExit('GET {} failed {} times, last: {}'.format(url, attempts, error))
+            time.sleep(10)
 
 
 def newest_release(package):
     return fetch_json(PYPI_URL.format(package))['info']['version']
 
 
-def plan(leg, python, source):
+def plan(leg, python, source, requests='', msgpack=''):
     if leg == 'floor':
         floors = requirement_floors((ROOT / 'requirements.txt').read_text())
         missing = [package for package in ('requests', 'msgpack') if package not in floors]
         if missing:
             raise SystemExit('requirements.txt declares no >= floor for {}'.format(', '.join(missing)))
         python = python or python_floor((ROOT / 'setup.py').read_text())
-        return entry(leg, python, floors['requests'], floors['msgpack'], source)
+        return entry(leg, python, requests or floors['requests'], msgpack or floors['msgpack'], source)
     if not python:
         manifest = fetch_json(MANIFEST_URL)
         python = newest_stable_python(manifest) if leg == 'latest' else canary_python(manifest)
-    return entry(leg, python, newest_release('requests'), newest_release('msgpack'), source)
+    return entry(leg, python, requests or newest_release('requests'), msgpack or newest_release('msgpack'), source)
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description='Prints the E2E job matrix as JSON.')
     parser.add_argument('--leg', choices=('all',) + LEGS, default='all')
     parser.add_argument('--python', default='', help='one exact Python version for every leg instead of the planned one')
+    parser.add_argument('--requests', default='', help='one exact requests version for every leg instead of the planned one')
+    parser.add_argument('--msgpack', default='', help='one exact msgpack version for every leg instead of the planned one')
     parser.add_argument('--source', choices=('checkout', 'pypi'), default='checkout')
     args = parser.parse_args(argv)
     legs = LEGS if args.leg == 'all' else (args.leg,)
     try:
-        include = [plan(leg, args.python.strip(), args.source) for leg in legs]
+        include = [plan(leg, args.python.strip(), args.source, args.requests.strip(), args.msgpack.strip()) for leg in legs]
     except ValueError as error:
         raise SystemExit(error)
     print(json.dumps(include))

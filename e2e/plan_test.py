@@ -83,6 +83,10 @@ class EntryTest(unittest.TestCase):
             'source': 'pypi',
         })
 
+    def test_exact_versions_replace_the_floors(self):
+        floor = plan.plan('floor', '3.10', 'checkout', requests='2.19.0', msgpack='0.6.0')
+        self.assertEqual(floor['name'], 'floor (Python 3.10, requests 2.19.0, msgpack 0.6.0)')
+
     def test_refuses_a_name_that_cannot_be_an_artifact_name(self):
         with self.assertRaises(ValueError):
             plan.entry('latest', 'pypy:3.11', '2.33.0', '1.1.2', 'checkout')

@@ -83,6 +83,8 @@ def entry(leg, python, requests, msgpack, source):
         'msgpack': msgpack,
         'prerelease': leg == 'canary',
         'source': source,
+        # The floor runs on the oldest Ubuntu image GitHub offers, the other legs follow ubuntu-latest.
+        'runner': 'ubuntu-24.04' if leg == 'floor' else 'ubuntu-latest',
     }
 
 

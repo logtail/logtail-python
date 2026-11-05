@@ -70,6 +70,7 @@ class EntryTest(unittest.TestCase):
             'msgpack': '0.5.6',
             'prerelease': False,
             'source': 'checkout',
+            'runner': 'ubuntu-24.04',
         })
 
     def test_canary_entry_allows_pre_releases(self):
@@ -81,6 +82,7 @@ class EntryTest(unittest.TestCase):
             'msgpack': '1.1.2',
             'prerelease': True,
             'source': 'pypi',
+            'runner': 'ubuntu-latest',
         })
 
     def test_exact_versions_replace_the_floors(self):

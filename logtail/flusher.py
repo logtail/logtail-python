@@ -30,6 +30,7 @@ class FlushWorker(threading.Thread):
         self.should_run = True
         self._flushing = False
         self._clean = True
+        self._reported_rejections: set[int] = set()
 
     def run(self) -> None:
         while self.should_run:
@@ -96,10 +97,28 @@ class FlushWorker(threading.Thread):
             if _should_retry(response.status_code):
                 reason = getattr(response, 'exception', 'HTTP {}'.format(response.status_code))
                 print('Failed to send logs to Better Stack after {} retries: {}'.format(len(RETRY_SCHEDULE), reason))
+            elif not 200 <= response.status_code < 300:
+                self._report_rejected_batch(len(frame), response)
 
         self._clean = True
         if shutdown and self.pipe.empty():
             self.should_run = False
+
+    def _report_rejected_batch(self, record_count: int, response: Any) -> None:
+        # A batch is flushed every second, so a line per rejected batch would flood the output
+        # of an app with a wrong source token.
+        if response.status_code in self._reported_rejections:
+            return
+        self._reported_rejections.add(response.status_code)
+
+        status = 'HTTP {} {}'.format(response.status_code, getattr(response, 'reason', None) or '').strip()
+        body = ' '.join(getattr(response, 'text', '')[:200].split())
+        print("Better Stack rejected {} log {} with {}{}. Further rejections with this status won't be reported.".format(
+            record_count,
+            'record' if record_count == 1 else 'records',
+            status,
+            ': {}'.format(body) if body else '',
+        ))
 
     def flush(self, timeout: Optional[float] = None) -> bool:
         """Block until the worker has drained the queue.
